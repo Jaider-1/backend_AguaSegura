@@ -1,11 +1,44 @@
 {
+  "name": "aguasegura-backend",
+  "version": "1.0.0",
+  "description": "Backend para sistema de gestión de agua",
+  "scripts": {
+    "build": "nest build",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:debug": "nest start --debug --watch",
+    "start:prod": "node dist/main",
+    "docker:dev": "docker-compose up --build",
+    "docker:down": "docker-compose down",
+    "docker:clean": "docker-compose down -v --remove-orphans",
+    "db:logs": "docker logs aguasegura-db -f"
+  },
   "dependencies": {
-    "@nestjs/platform-express": "^10.0.0",
-    "@nestjs/mapped-types": "*",
-    "multer": "^1.4.5",
-    "@types/multer": "^1.4.7",
-    "csv-parser": "^3.0.0",
-    "fs-extra": "^11.1.1",
-    "path": "^0.12.7"
+    "@nestjs/common": "^10.4.20",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^10.4.20",
+    "@nestjs/jwt": "^10.2.0",
+    "@nestjs/passport": "^10.0.3",
+    "@nestjs/platform-express": "^10.4.20",
+    "@nestjs/swagger": "^7.4.2",
+    "@nestjs/typeorm": "^10.0.2",
+    "bcryptjs": "^2.4.3",
+    "class-transformer": "^0.5.0",
+    "class-validator": "^0.14.0",
+    "passport": "^0.6.0",
+    "passport-jwt": "^4.0.1",
+    "passport-local": "^1.0.0",
+    "pg": "^8.11.0",
+    "typeorm": "^0.3.0"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.4.9",
+    "@nestjs/schematics": "^10.0.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/express": "^4.17.0",
+    "@types/node": "^18.0.0",
+    "@types/passport-jwt": "^3.0.13",
+    "@types/passport-local": "^1.0.0",
+    "typescript": "^5.0.0"
   }
 }
