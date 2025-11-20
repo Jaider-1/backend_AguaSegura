@@ -1,0 +1,40 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: aguasegura-db-prod
+    environment:
+      POSTGRES_DB: aguasegura
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    networks:
+      - aguasegura-network-prod
+    restart: unless-stopped
+
+  app:
+    image: aguasegura-backend:latest
+    container_name: aguasegura-backend-prod
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_NAME: aguasegura
+      JWT_SECRET: ${JWT_SECRET}
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    networks:
+      - aguasegura-network-prod
+    restart: unless-stopped
+
+volumes:
+  postgres_data_prod:
+
+networks:
+  aguasegura-network-prod:
+    driver: bridge

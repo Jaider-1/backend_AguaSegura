@@ -11,7 +11,11 @@
     "docker:dev": "docker-compose up --build",
     "docker:down": "docker-compose down",
     "docker:clean": "docker-compose down -v --remove-orphans",
-    "db:logs": "docker logs aguasegura-db -f"
+    "db:logs": "docker logs aguasegura-db -f",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
+    "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.20",

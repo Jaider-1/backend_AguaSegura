@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: aguasegura-backend
+    env: docker
+    docker:
+      dockerfilePath: ./Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: aguasegura-db
+          property: connectionString
+    healthCheckPath: /api
+    autoDeploy: true
+
+databases:
+  - name: aguasegura-db
+    databaseName: aguasegura
+    user: aguasegura_user
+    plan: free
