@@ -1,21 +1,25 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
 
-@Entity('measurements')
+@Entity()
 export class Measurement {
+
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column('float')
+  @Column({ type: 'float' })
   irca: number;
 
-  @Column('float', { nullable: true })
+  @Column({ type: 'float', nullable: true })
   ph: number;
 
-  @Column('float', { nullable: true })
+  @Column({ type: 'float', nullable: true })
   turbidity: number;
 
-  @Column('float', { nullable: true })
+  @Column({ type: 'float', nullable: true })
   temperature: number;
+
+  @Column({ type: 'float', nullable: true })
+  waterAmount: number; // cantidad del agua (opcional)
 
   @CreateDateColumn()
   createdAt: Date;

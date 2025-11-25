@@ -18,12 +18,14 @@ export class RecommendationsController {
     @Query('ph') ph?: number,
     @Query('turbidity') turbidity?: number,
     @Query('temperature') temperature?: number,
+    @Query('waterAmount') waterAmount?: number,
   ) {
     return this.recommendationsService.generateRecommendations({
       irca,
       ph,
       turbidity,
       temperature,
+      waterAmount
     });
   }
 }

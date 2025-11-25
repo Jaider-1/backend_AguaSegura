@@ -49,7 +49,8 @@ export class RecommendationsService implements OnModuleInit {
     ph?: number;
     turbidity?: number;
     temperature?: number;
-  }): Promise<RecommendationResponse> {
+    waterAmount?: number;
+    }): Promise<RecommendationResponse> {
     
     // 1️⃣ Guardar valores en la BD (SIN recomendaciones)
     await this.measurementRepo.save({
@@ -57,6 +58,7 @@ export class RecommendationsService implements OnModuleInit {
       ph: data.ph,
       turbidity: data.turbidity,
       temperature: data.temperature,
+      waterAmount: data.waterAmount,
     });
 
     // 2️⃣ Devolver el cálculo
