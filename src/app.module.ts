@@ -3,7 +3,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
-
+import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { RecommendationsModule } from './modules/recommendations/recommendations.module';
@@ -27,7 +27,7 @@ import { RecommendationsModule } from './modules/recommendations/recommendations
       synchronize: true,
       logging: true,
     }),
-
+    ScheduleModule.forRoot(),    // ← IMPORTANTE
     AuthModule,
     UsersModule,
     RecommendationsModule,

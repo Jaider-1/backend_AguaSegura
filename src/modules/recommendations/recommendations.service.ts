@@ -1,85 +1,94 @@
-import axios from "axios";
 import { Injectable, OnModuleInit } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
+import { HttpService } from "@nestjs/axios";
+import { firstValueFrom } from "rxjs";
 import { RecommendationRule } from "./interfaces/recommendation.interface";
 import { RecommendationAlgorithm } from "./algorithms/recommendation.algorithm";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Measurement } from "./entities/measurement.entity";
-import { Repository } from "typeorm";
 
 @Injectable()
 export class RecommendationsService implements OnModuleInit {
   private rules: RecommendationRule[] = [];
+  private lastSnapshot: string = ""; // 🔹 para detectar cambios
   private algorithm: RecommendationAlgorithm;
 
-  constructor(
-    @InjectRepository(Measurement)
-    private measurementRepo: Repository<Measurement>
-  ) {}
+  constructor(private readonly httpService: HttpService) {}
 
   async onModuleInit() {
-    this.rules = await this.loadGoogleSheet();
+    await this.loadRulesFromGoogleSheets();
     this.algorithm = new RecommendationAlgorithm(this.rules);
 
-    console.log(`📄 Reglas cargadas desde Google Sheets: ${this.rules.length}`);
+    console.log(`✅ Reglas iniciales cargadas: ${this.rules.length}`);
   }
 
-  updateRules(newRules: RecommendationRule[]) {
-    this.rules = newRules;
-    this.algorithm = new RecommendationAlgorithm(this.rules);
-  }
-
-  async generateRecommendations(data: {
-    irca: number;
-    ph?: number;
-    turbidity?: number;
-    temperature?: number;
-  }) {
-    // guardar en BD
-    await this.measurementRepo.save({
-      irca: data.irca,
-      ph: data.ph,
-      turbidity: data.turbidity,
-      temperature: data.temperature,
-    });
-
-    return this.algorithm.calculateRecommendations(data);
-  }
-
-  // 🔥 Cargar reglas desde Google Sheets
-  private async loadGoogleSheet(): Promise<RecommendationRule[]> {
+  // 🔥 Cargar Google Sheets
+  private async loadRulesFromGoogleSheets(): Promise<void> {
     const sheetId = process.env.GSHEET_ID;
     const apiKey = process.env.GSHEET_API_KEY;
-    const sheetName = process.env.GSHEET_SHEET || "Hoja1";
+    const sheetName = process.env.GSHEET_SHEET;
 
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}?key=${apiKey}`;
 
-    const response = await axios.get(url);
-
+    const response = await firstValueFrom(this.httpService.get(url));
     const rows = response.data.values;
 
-    const headers = rows[0];
-    const rules = [];
+    if (!rows || rows.length < 2) return;
 
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i];
-      const ruleObj: any = {};
+    const [headers, ...data] = rows;
 
-      headers.forEach((h, index) => {
-        ruleObj[h] = row[index];
-      });
+    this.rules = data.map((row) => {
+      const obj: any = {};
+      headers.forEach((h, i) => (obj[h] = row[i]));
+      return {
+        parameter: obj.parameter,
+        min_value: Number(obj.min_value),
+        max_value: Number(obj.max_value),
+        condition: obj.condition,
+        recommendation: obj.recommendation,
+        severity: obj.severity,
+      };
+    });
 
-      rules.push({
-        parameter: ruleObj.parameter,
-        min_value: parseFloat(ruleObj.min_value),
-        max_value: parseFloat(ruleObj.max_value),
-        condition: ruleObj.condition,
-        recommendation: ruleObj.recommendation,
-        severity: ruleObj.severity,
-      });
+    this.algorithm = new RecommendationAlgorithm(this.rules);
+    console.log(`🔄 Reglas actualizadas. Total: ${this.rules.length}`);
+  }
+
+  // 🔄 CRON JOB: cada minuto revisa si hubo cambios
+  @Cron("*/5 * * * * *") // Cada 5 segundos
+  async checkForUpdates() {
+    try {
+      console.log(
+        `⏳ [${new Date().toISOString()}] Revisando cambios en Google Sheets...`
+      );
+
+      const sheetId = process.env.GSHEET_ID;
+      const apiKey = process.env.GSHEET_API_KEY;
+      const sheetName = process.env.GSHEET_SHEET;
+
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}?key=${apiKey}`;
+
+      const response = await firstValueFrom(this.httpService.get(url));
+
+      const newSnapshot = JSON.stringify(response.data.values);
+
+      if (this.lastSnapshot === "") {
+        this.lastSnapshot = newSnapshot;
+        console.log("📌 Snapshot inicial guardado.");
+        return;
+      }
+
+      if (newSnapshot !== this.lastSnapshot) {
+        console.log("⚠️ ¡Google Sheets cambió! Recargando reglas...");
+        this.lastSnapshot = newSnapshot;
+        await this.loadRulesFromGoogleSheets();
+      } else {
+        console.log("✔ Sin cambios.");
+      }
+    } catch (e) {
+      console.error("❌ Error revisando Google Sheets:", e.message);
     }
+  }
 
-    
-
-    return rules;
+  async generateRecommendations(data: any) {
+    return this.algorithm.calculateRecommendations(data);
   }
 }
