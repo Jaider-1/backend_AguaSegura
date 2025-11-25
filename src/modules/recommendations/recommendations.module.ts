@@ -10,4 +10,7 @@ import { Measurement } from './entities/measurement.entity';
   providers: [RecommendationsService],
   exports: [RecommendationsService],
 })
+
+
+
 export class RecommendationsModule {}

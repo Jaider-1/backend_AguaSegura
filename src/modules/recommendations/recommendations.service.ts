@@ -1,13 +1,10 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as csv from 'csv-parser';
-
-import { Measurement } from './entities/measurement.entity';
-import { RecommendationRule, RecommendationResponse } from './interfaces/recommendation.interface';
-import { RecommendationAlgorithm } from './algorithms/recommendation.algorithm';
+import axios from "axios";
+import { Injectable, OnModuleInit } from "@nestjs/common";
+import { RecommendationRule } from "./interfaces/recommendation.interface";
+import { RecommendationAlgorithm } from "./algorithms/recommendation.algorithm";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Measurement } from "./entities/measurement.entity";
+import { Repository } from "typeorm";
 
 @Injectable()
 export class RecommendationsService implements OnModuleInit {
@@ -16,32 +13,19 @@ export class RecommendationsService implements OnModuleInit {
 
   constructor(
     @InjectRepository(Measurement)
-    private measurementRepo: Repository<Measurement>,
+    private measurementRepo: Repository<Measurement>
   ) {}
 
   async onModuleInit() {
-    const file = path.join(process.cwd(), 'database', 'recommendations.csv');
-    this.rules = await this.loadCsv(file);
+    this.rules = await this.loadGoogleSheet();
     this.algorithm = new RecommendationAlgorithm(this.rules);
+
+    console.log(`📄 Reglas cargadas desde Google Sheets: ${this.rules.length}`);
   }
 
-  private loadCsv(filePath: string): Promise<RecommendationRule[]> {
-    return new Promise((resolve, reject) => {
-      const results: RecommendationRule[] = [];
-
-      fs.createReadStream(filePath)
-        .pipe(csv())
-        .on('data', (data) => results.push({
-          parameter: data.parameter,
-          min_value: parseFloat(data.min_value),
-          max_value: parseFloat(data.max_value),
-          condition: data.condition,
-          recommendation: data.recommendation,
-          severity: data.severity,
-        }))
-        .on('end', () => resolve(results))
-        .on('error', (err) => reject(err));
-    });
+  updateRules(newRules: RecommendationRule[]) {
+    this.rules = newRules;
+    this.algorithm = new RecommendationAlgorithm(this.rules);
   }
 
   async generateRecommendations(data: {
@@ -49,9 +33,8 @@ export class RecommendationsService implements OnModuleInit {
     ph?: number;
     turbidity?: number;
     temperature?: number;
-  }): Promise<RecommendationResponse> {
-    
-    // 1️⃣ Guardar valores en la BD (SIN recomendaciones)
+  }) {
+    // guardar en BD
     await this.measurementRepo.save({
       irca: data.irca,
       ph: data.ph,
@@ -59,7 +42,44 @@ export class RecommendationsService implements OnModuleInit {
       temperature: data.temperature,
     });
 
-    // 2️⃣ Devolver el cálculo
     return this.algorithm.calculateRecommendations(data);
+  }
+
+  // 🔥 Cargar reglas desde Google Sheets
+  private async loadGoogleSheet(): Promise<RecommendationRule[]> {
+    const sheetId = process.env.GSHEET_ID;
+    const apiKey = process.env.GSHEET_API_KEY;
+    const sheetName = process.env.GSHEET_SHEET || "Hoja1";
+
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}?key=${apiKey}`;
+
+    const response = await axios.get(url);
+
+    const rows = response.data.values;
+
+    const headers = rows[0];
+    const rules = [];
+
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      const ruleObj: any = {};
+
+      headers.forEach((h, index) => {
+        ruleObj[h] = row[index];
+      });
+
+      rules.push({
+        parameter: ruleObj.parameter,
+        min_value: parseFloat(ruleObj.min_value),
+        max_value: parseFloat(ruleObj.max_value),
+        condition: ruleObj.condition,
+        recommendation: ruleObj.recommendation,
+        severity: ruleObj.severity,
+      });
+    }
+
+    
+
+    return rules;
   }
 }
