@@ -2,10 +2,10 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RecommendationsController } from './recommendations.controller';
 import { RecommendationsService } from './recommendations.service';
-import { User } from '../users/entities/user.entity';
+import { Measurement } from './entities/measurement.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User])],
+  imports: [TypeOrmModule.forFeature([Measurement])],
   controllers: [RecommendationsController],
   providers: [RecommendationsService],
   exports: [RecommendationsService],

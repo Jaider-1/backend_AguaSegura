@@ -1,7 +1,11 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as csv from 'csv-parser';
+
+import { Measurement } from './entities/measurement.entity';
 import { RecommendationRule, RecommendationResponse } from './interfaces/recommendation.interface';
 import { RecommendationAlgorithm } from './algorithms/recommendation.algorithm';
 
@@ -10,13 +14,15 @@ export class RecommendationsService implements OnModuleInit {
   private rules: RecommendationRule[] = [];
   private algorithm: RecommendationAlgorithm;
 
+  constructor(
+    @InjectRepository(Measurement)
+    private measurementRepo: Repository<Measurement>,
+  ) {}
+
   async onModuleInit() {
     const file = path.join(process.cwd(), 'database', 'recommendations.csv');
     this.rules = await this.loadCsv(file);
-
     this.algorithm = new RecommendationAlgorithm(this.rules);
-
-    console.log(`✅ Reglas cargadas: ${this.rules.length}`);
   }
 
   private loadCsv(filePath: string): Promise<RecommendationRule[]> {
@@ -44,6 +50,16 @@ export class RecommendationsService implements OnModuleInit {
     turbidity?: number;
     temperature?: number;
   }): Promise<RecommendationResponse> {
+    
+    // 1️⃣ Guardar valores en la BD (SIN recomendaciones)
+    await this.measurementRepo.save({
+      irca: data.irca,
+      ph: data.ph,
+      turbidity: data.turbidity,
+      temperature: data.temperature,
+    });
+
+    // 2️⃣ Devolver el cálculo
     return this.algorithm.calculateRecommendations(data);
   }
 }

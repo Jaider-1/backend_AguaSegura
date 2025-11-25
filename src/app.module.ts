@@ -4,6 +4,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { RecommendationsModule } from './modules/recommendations/recommendations.module';
 import { User } from './modules/users/entities/user.entity';
+import { Measurement } from './modules/recommendations/entities/measurement.entity';
 import configuration from './config/configuration';
 
 @Module({
@@ -15,11 +16,18 @@ import configuration from './config/configuration';
       username: configuration().database.username,
       password: configuration().database.password,
       database: configuration().database.database,
-      entities: [User],
+
+      // 👇 AGREGAR TODAS LAS ENTIDADES AQUÍ
+      entities: [
+        User,
+        Measurement,
+        __dirname + '/**/*.entity{.ts,.js}', // opcional pero recomendado
+      ],
+
       synchronize: true,
       logging: true,
     }),
-    // Eliminar JwtModule de aquí
+
     AuthModule,
     UsersModule,
     RecommendationsModule,
