@@ -26,6 +26,7 @@ import { RecommendationsModule } from './modules/recommendations/recommendations
       autoLoadEntities: true, // ⭐ Carga entidades automáticamente
       synchronize: true,
       logging: true,
+      
     }),
     ScheduleModule.forRoot(),    // ← IMPORTANTE
     AuthModule,
