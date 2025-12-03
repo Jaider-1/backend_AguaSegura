@@ -26,6 +26,7 @@ import configuration from './config/configuration';
 
       synchronize: true,
       logging: true,
+      
     }),
 
     AuthModule,
