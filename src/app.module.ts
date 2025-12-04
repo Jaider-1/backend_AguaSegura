@@ -3,9 +3,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { RecommendationsModule } from './modules/recommendations/recommendations.module';
+import { WaterQuantityModule } from './modules/water-quantity/water-quantity.module';
+import { WaterQualityModule } from './modules/water-quality/water-quality.module';
 import { User } from './modules/users/entities/user.entity';
-import { Measurement } from './modules/recommendations/entities/measurement.entity';
+import { WaterQuantity } from './modules/water-quantity/entities/water-quantity.entity';
+import { WaterQuality } from './modules/water-quality/entities/water-quality.entity';
 import configuration from './config/configuration';
+import { Measurement } from './modules/recommendations/entities/measurement.entity';
+
 
 @Module({
   imports: [
@@ -20,6 +25,8 @@ import configuration from './config/configuration';
       // 👇 AGREGAR TODAS LAS ENTIDADES AQUÍ
       entities: [
         User,
+        WaterQuantity, 
+        WaterQuality,
         Measurement,
         __dirname + '/**/*.entity{.ts,.js}', // opcional pero recomendado
       ],
@@ -32,6 +39,8 @@ import configuration from './config/configuration';
     AuthModule,
     UsersModule,
     RecommendationsModule,
+    WaterQuantityModule,
+    WaterQualityModule,
   ],
 })
 export class AppModule {}

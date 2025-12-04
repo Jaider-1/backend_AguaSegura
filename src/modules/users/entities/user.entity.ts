@@ -1,4 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import { WaterQuantity } from '../../water-quantity/entities/water-quantity.entity';
+import { WaterQuality } from '../../water-quality/entities/water-quality.entity';
 
 @Entity('users')
 export class User {
@@ -28,4 +30,11 @@ export class User {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  // RELACIONES
+  @OneToMany(() => WaterQuantity, waterQuantity => waterQuantity.user)
+  waterQuantities: WaterQuantity[];
+
+  @OneToMany(() => WaterQuality, waterQuality => waterQuality.user)
+  waterQualities: WaterQuality[];
 }
