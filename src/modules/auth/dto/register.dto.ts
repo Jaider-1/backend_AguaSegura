@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, IsOptional, IsPhoneNumber } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, Matches } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RegisterDto {
@@ -8,7 +8,9 @@ export class RegisterDto {
 
   @ApiProperty({ example: '+573001234567', required: false })
   @IsOptional()
-  @IsPhoneNumber()
+  @Matches(/^\+?[1-9]\d{1,14}$/, { 
+    message: 'El teléfono debe ser un número válido con código de país' 
+  })
   phone?: string;
 
   @ApiProperty({ example: 'Juan Pérez', required: false })
