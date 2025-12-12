@@ -1,26 +1,38 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } from 'typeorm';
+// src/modules/water-quantity/entities/water-quantity.entity.ts
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
-@Entity('water_quantities')
+@Entity('water_quantity')
 export class WaterQuantity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column('decimal', { precision: 10, scale: 2 })
-  liters: number; // Cantidad en litros
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  volume: number;
 
-  @Column('decimal', { precision: 5, scale: 2 })
-  percentage: number; // Porcentaje del tanque/disponible (0-100%)
+  @Column({ type: 'decimal', precision: 5, scale: 2 })
+  flowRate: number;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2 })
+  level: number; // Porcentaje (0-100)
+
+  @Column({ type: 'decimal', precision: 5, scale: 2 })
+  pressure: number;
+
+  @Column({ nullable: true })
+  location: string;
+
+  @Column({ nullable: true })
+  deviceId: string;
 
   @CreateDateColumn()
-  measuredAt: Date; // Fecha y hora de la medición
+  createdAt: Date; // ESTA ES LA PROPERTY QUE DEBES USAR
 
-  @ManyToOne(() => User, user => user.waterQuantities, { nullable: true })
+  // Relación opcional con usuario
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'userId' })
   user: User;
 
   @Column({ nullable: true })
   userId: string;
-
-  @CreateDateColumn()
-  createdAt: Date;
 }

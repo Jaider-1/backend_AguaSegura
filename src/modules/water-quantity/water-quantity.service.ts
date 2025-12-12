@@ -1,50 +1,70 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, Between } from "typeorm";
-import { WaterQuantity } from "./entities/water-quantity.entity";
-import { CreateWaterQuantityDto } from "./dto/create-water-quantity.dto";
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, Between, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { WaterQuantity } from './entities/water-quantity.entity';
+import { CreateWaterQuantityDto } from './dto/create-water-quantity.dto';
+import { UpdateWaterQuantityDto } from './dto/update-water-quantity.dto';
 
 @Injectable()
 export class WaterQuantityService {
   constructor(
     @InjectRepository(WaterQuantity)
-    private waterQuantityRepository: Repository<WaterQuantity>
+    private waterQuantityRepository: Repository<WaterQuantity>,
   ) {}
 
-  async create(
-    createDto: CreateWaterQuantityDto,
-    userId?: string
-  ): Promise<WaterQuantity> {
-    const waterQuantity = this.waterQuantityRepository.create({
-      ...createDto,
-      userId, // ← Aquí se asocia el usuario
-      measuredAt: new Date(),
-    });
-
-    return this.waterQuantityRepository.save(waterQuantity);
+  async create(createWaterQuantityDto: CreateWaterQuantityDto, userId: string): Promise<WaterQuantity> {
+    // Add userId to the DTO
+    const waterQuantityData = {
+      ...createWaterQuantityDto,
+      userId
+    };
+    
+    const waterQuantity = this.waterQuantityRepository.create(waterQuantityData);
+    return await this.waterQuantityRepository.save(waterQuantity);
   }
 
-  async findAll(
-    userId?: string,
-    startDate?: Date,
-    endDate?: Date,
-    limit: number = 50
-  ): Promise<WaterQuantity[]> {
-    const where: any = {};
-
-    if (userId) {
-      where.userId = userId; // ← Filtrar por usuario
-    }
-
-    if (startDate && endDate) {
-      where.measuredAt = Between(startDate, endDate);
-    }
-
-    return this.waterQuantityRepository.find({
-      where,
-      order: { measuredAt: "DESC" },
-      take: limit,
+  async findOneByUser(id: string, userId: string): Promise<WaterQuantity> {
+    const waterQuantity = await this.waterQuantityRepository.findOne({
+      where: { id, userId },
     });
+    if (!waterQuantity) {
+      throw new NotFoundException(`Datos de cantidad de agua con ID ${id} no encontrados para el usuario`);
+    }
+    return waterQuantity;
+  }
+
+  async findAll(): Promise<WaterQuantity[]> {
+    return this.waterQuantityRepository.find({
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  async findByUserWithFilters(
+    userId: string, 
+    startDate?: Date, 
+    endDate?: Date, 
+    limit?: number
+  ): Promise<WaterQuantity[]> {
+    const queryOptions: any = {
+      where: { userId },
+      order: { createdAt: "DESC" },
+    };
+
+    // Apply date filters if provided
+    if (startDate && endDate) {
+      queryOptions.where.createdAt = Between(startDate, endDate);
+    } else if (startDate) {
+      queryOptions.where.createdAt = MoreThanOrEqual(startDate);
+    } else if (endDate) {
+      queryOptions.where.createdAt = LessThanOrEqual(endDate);
+    }
+
+    // Apply limit if provided
+    if (limit) {
+      queryOptions.take = limit;
+    }
+
+    return this.waterQuantityRepository.find(queryOptions);
   }
 
   async findOne(id: string): Promise<WaterQuantity> {
@@ -53,65 +73,57 @@ export class WaterQuantityService {
     });
 
     if (!waterQuantity) {
-      throw new NotFoundException("Registro de cantidad de agua no encontrado");
+      throw new NotFoundException(`Datos de cantidad de agua con ID ${id} no encontrados`);
     }
 
     return waterQuantity;
   }
 
-  async getLatest(userId?: string): Promise<WaterQuantity> {
-    const where: any = {};
-    if (userId) {
-      where.userId = userId;
-    }
-
-    const latest = await this.waterQuantityRepository.findOne({
-      where,
-      order: { measuredAt: "DESC" },
-    });
-
-    if (!latest) {
-      throw new NotFoundException("No hay registros de cantidad de agua");
-    }
-
-    return latest;
+  async update(id: string, updateWaterQuantityDto: UpdateWaterQuantityDto): Promise<WaterQuantity> {
+    const waterQuantity = await this.findOne(id);
+    Object.assign(waterQuantity, updateWaterQuantityDto);
+    return this.waterQuantityRepository.save(waterQuantity);
   }
 
-  async getStats(userId?: string) {
-    const where: any = {};
-    if (userId) {
-      where.userId = userId;
+  async remove(id: string): Promise<void> {
+    const result = await this.waterQuantityRepository.delete(id);
+    
+    if (result.affected === 0) {
+      throw new NotFoundException(`Datos de cantidad de agua con ID ${id} no encontrados`);
     }
+  }
 
-    const today = new Date();
-    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(today.setHours(23, 59, 59, 999));
-
-    const stats = await this.waterQuantityRepository
-      .createQueryBuilder("water_quantity")
-      .select([
-        "AVG(water_quantity.liters) as avgLiters",
-        "SUM(water_quantity.liters) as totalLiters",
-        "AVG(water_quantity.percentage) as avgPercentage",
-        "MIN(water_quantity.percentage) as minPercentage",
-        "MAX(water_quantity.percentage) as maxPercentage",
-        "COUNT(water_quantity.id) as totalRecords",
-      ])
-      .where(where)
-      .getRawOne();
-
-    // Obtener el registro más reciente de hoy
-    const latestToday = await this.waterQuantityRepository.findOne({
-      where: {
-        ...where,
-        measuredAt: Between(startOfDay, endOfDay),
-      },
-      order: { measuredAt: "DESC" },
+  async findByUser(userId: string): Promise<WaterQuantity[]> {
+    return this.waterQuantityRepository.find({
+      where: { userId },
+      order: { createdAt: "DESC" },
     });
+  }
 
+  async findLatestByUser(userId: string): Promise<WaterQuantity | null> {
+    return this.waterQuantityRepository.findOne({
+      where: { userId },
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  // NEW: Public methods for public endpoints
+  async getLatest(): Promise<WaterQuantity | null> {
+    return this.waterQuantityRepository.findOne({
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  async getStats(): Promise<any> {
+    // Example stats - customize based on your needs
+    const total = await this.waterQuantityRepository.count();
+    const latest = await this.getLatest();
+    
+    // You can add more statistical calculations here
     return {
-      ...stats,
-      latestToday: latestToday || null,
+      totalRecords: total,
+      latestRecord: latest,
+      // Add more stats as needed
     };
   }
 }

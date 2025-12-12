@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, OneToOne } from 'typeorm';
 import { WaterQuantity } from '../../water-quantity/entities/water-quantity.entity';
 import { WaterQuality } from '../../water-quality/entities/water-quality.entity';
+import { Recommendation } from '../../recommendations/entities/recommendation.entity';
 
 @Entity('users')
 export class User {
@@ -25,16 +26,27 @@ export class User {
   @Column({ nullable: true })
   name: string;
 
+  @Column({ nullable: true })
+  householdSize: number;
+
+  @Column({ nullable: true })
+  reuseDisposition: string; // 'Dispuesto', 'En dudas', 'No dispuesto'
+
+  @Column({ type: 'simple-array', nullable: true })
+  climateConditions: string[];
+
   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
 
-  // RELACIONES
-  @OneToMany(() => WaterQuantity, waterQuantity => waterQuantity.user)
-  waterQuantities: WaterQuantity[];
+  @OneToMany(() => Recommendation, recommendation => recommendation.user)
+  recommendations: Recommendation[];
 
-  @OneToMany(() => WaterQuality, waterQuality => waterQuality.user)
+   @OneToMany(() => WaterQuality, waterQuality => waterQuality.user)
   waterQualities: WaterQuality[];
+
+   @OneToMany(() => WaterQuantity, waterQuantity => waterQuantity.user)
+  waterQuantities: WaterQuantity[];
 }

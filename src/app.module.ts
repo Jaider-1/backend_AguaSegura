@@ -10,32 +10,37 @@ import { WaterQuantity } from './modules/water-quantity/entities/water-quantity.
 import { WaterQuality } from './modules/water-quality/entities/water-quality.entity';
 import configuration from './config/configuration';
 import { Measurement } from './modules/recommendations/entities/measurement.entity';
-
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { Recommendation } from './modules/recommendations/entities/recommendation.entity';
+import { RecommendationRules } from './modules/recommendations/entities/recommendation-rules.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: configuration().database.host,
-      port: configuration().database.port,
-      username: configuration().database.username,
-      password: configuration().database.password,
-      database: configuration().database.database,
-
-      // 👇 AGREGAR TODAS LAS ENTIDADES AQUÍ
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432'),
+      username: process.env.DB_USERNAME || 'postgres',
+      password: process.env.DB_PASSWORD || 'jaider123',
+      database: process.env.DB_DATABASE || 'aguasegura',
       entities: [
-        User,
-        WaterQuantity, 
-        WaterQuality,
-        Measurement,
-        __dirname + '/**/*.entity{.ts,.js}', // opcional pero recomendado
+        __dirname + '/../**/*.entity{.ts,.js}',
+        RecommendationRules, // Asegúrate de incluirla
       ],
-
-      synchronize: true,
-      logging: true,
-      
+      synchronize: true, // ⚠️ SOLO para desarrollo
+      autoLoadEntities: true,
     }),
-
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: { expiresIn: '3600s' },
+      }),
+    }),
+    
+    
     AuthModule,
     UsersModule,
     RecommendationsModule,

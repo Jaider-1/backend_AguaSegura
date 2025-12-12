@@ -23,8 +23,6 @@ export class WaterQuality {
   @Column({ nullable: true })
   deviceId: string;
 
-  @Column({ default: 'manual' })
-  entryType: string;
 
   @CreateDateColumn()
   measuredAt: Date;

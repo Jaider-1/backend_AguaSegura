@@ -1,18 +1,38 @@
-export type TrafficLightColor = 'green' | 'yellow' | 'red';
-
-export interface RecommendationRule {
-  parameter: string;
-  min_value: number;
-  max_value: number;
-  condition: string;
-  recommendation: string;
-  severity: string;
+// src/modules/recommendations/interfaces/recommendation.interface.ts
+export interface RecommendationRequestData {
+  userId?: string;
+  waterQualityId?: string;
+  waterQuantityId?: string;
+  quantityPercentage?: number;
+  qualityIrc?: number;
+  climateConditions?: string[];
+  reuseDisposition?: string;
+  householdSize?: number;
+  currentDate?: Date;
 }
 
-export interface RecommendationResponse {
-  trafficLight: TrafficLightColor;
-  riskLevel: string;
-  ircaValue: number;
-  recommendations: string[];
-  timestamp: string;
+export interface GeneratedRecommendation {
+  message: string;
+  priorityLevel: string;
+  trafficLightColor: string;
+  category: string;
+  parameters?: Record<string, any>;
+}
+
+export interface RecommendationStats {
+  total: number;
+  read: number;
+  applied: number;
+  byPriority: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+  byTrafficLight: {
+    red: number;
+    yellow: number;
+    green: number;
+  };
+  categories: number;
 }

@@ -1,25 +1,40 @@
-import { IsNumber, IsOptional, IsString, Min, Max } from 'class-validator';
+// src/modules/water-quantity/dto/create-water-quantity.dto.ts
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
 export class CreateWaterQuantityDto {
-  @ApiProperty({ example: 500.5, description: 'Cantidad en litros' })
+  @ApiProperty({ example: 450.0 })
   @IsNumber()
-  @Min(0)
-  liters: number;
+  @Type(() => Number)
+  volume: number;
 
-  @ApiProperty({ example: 65.5, description: 'Porcentaje de disponibilidad (0-100)' })
+  @ApiProperty({ example: 2.5 })
   @IsNumber()
-  @Min(0)
-  @Max(100)
-  percentage: number;
+  @Type(() => Number)
+  flowRate: number;
 
+  @ApiProperty({ example: 65.5 })
+  @IsNumber()
+  @Type(() => Number)
+  level: number;
 
-  // NUEVO CAMPO: userId
-  @ApiProperty({ 
-    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', 
-    description: 'ID del usuario',
-    required: false 
-  })
+  @ApiProperty({ example: 3.2 })
+  @IsNumber()
+  @Type(() => Number)
+  pressure: number;
+
+  @ApiProperty({ example: 'Tanque principal', required: false })
+  @IsOptional()
+  @IsString()
+  location?: string;
+
+  @ApiProperty({ example: 'sensor-cantidad-001', required: false })
+  @IsOptional()
+  @IsString()
+  deviceId?: string;
+
+  @ApiProperty({ example: 'user-id-uuid', required: false })
   @IsOptional()
   @IsString()
   userId?: string;
