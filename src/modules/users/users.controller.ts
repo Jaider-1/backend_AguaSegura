@@ -43,46 +43,4 @@ export class UsersController {
       data: await this.usersService.findByEmail(email)
     };
   }
-
-  // Endpoint especial para frontend
-  @Get('demo/profile')
-  @ApiOperation({ summary: 'Obtener perfil de usuario demo' })
-  @ApiQuery({ name: 'email', required: false, description: 'Email para buscar' })
-  @ApiResponse({ status: 200, description: 'Perfil de usuario' })
-  async getDemoProfile(@Query('email') email?: string) {
-    if (email) {
-      try {
-        const user = await this.usersService.findByEmail(email);
-        return {
-          success: true,
-          data: user
-        };
-      } catch {
-        // Si no existe, devolver datos demo
-        return this.getDemoUserData(email);
-      }
-    }
-    
-    // Datos demo por defecto
-    return this.getDemoUserData('demo@aguasegura.com');
-  }
-
-  private getDemoUserData(email: string) {
-    return {
-      success: true,
-      data: {
-        id: 'demo-user-id',
-        email: email,
-        name: 'Usuario Demo Aguasegura',
-        role: 'user',
-        householdSize: 4,
-        reuseDisposition: 'Dispuesto',
-        climateConditions: ['Normal'],
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      },
-      message: 'Datos de demostración. Registrate para tener tu perfil real.'
-    };
-  }
 }

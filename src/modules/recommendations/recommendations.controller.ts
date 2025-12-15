@@ -8,7 +8,6 @@ import {
   Param, 
   Delete, 
   Query, 
-  UseGuards, 
   HttpCode, 
   HttpStatus,
   ParseUUIDPipe
@@ -17,7 +16,6 @@ import {
   ApiTags, 
   ApiOperation, 
   ApiResponse, 
-  ApiBearerAuth, 
   ApiQuery,
   ApiParam 
 } from '@nestjs/swagger';
@@ -25,18 +23,13 @@ import { RecommendationsService } from './recommendations.service';
 import { CreateRecommendationDto } from './dto/create-recommendation.dto';
 import { UpdateRecommendationDto } from './dto/update-recommendation.dto';
 import { FilterRecommendationsDto } from './dto/filter-recommendations.dto';
-import { AuthGuard } from '../../common/guards/auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorator/roles.decorator';
-import { CurrentUser } from '../../common/decorator/current-user.decorator';
-import { User } from '../users/entities/user.entity';
 
 @ApiTags('recommendations')
 @Controller('recommendations')
 export class RecommendationsController {
   constructor(private readonly recommendationsService: RecommendationsService) {}
 
-  // 🔓 ENDPOINTS PÚBLICOS (sin autenticación)
+  // ENDPOINTS PÚBLICOS
 
   @Get('rules')
   @ApiOperation({ summary: 'Obtener todas las reglas de recomendación activas' })
@@ -80,21 +73,10 @@ export class RecommendationsController {
     @Body() body: {
       quantityPercentage?: number;
       qualityIrc?: number;
-      climateConditions?: string[];
-      reuseDisposition?: string;
-      householdSize?: number;
+     
     }
   ) {
-    // Crear recomendaciones sin usuario
-    const requestData = {
-      quantityPercentage: body.quantityPercentage,
-      qualityIrc: body.qualityIrc,
-      climateConditions: body.climateConditions,
-      reuseDisposition: body.reuseDisposition,
-      householdSize: body.householdSize,
-    };
-
-    const generatedRecs = await this.recommendationsService.generateRecommendationsPublic(requestData);
+    const generatedRecs = await this.recommendationsService.generateRecommendationsPublic(body);
     
     return {
       success: true,
@@ -114,46 +96,21 @@ export class RecommendationsController {
       scenario: 'critical' | 'low' | 'normal' | 'quality_issue' | 'family';
     }
   ) {
-    let requestData;
-    
-    switch (simulateData.scenario) {
-      case 'critical':
-        requestData = { quantityPercentage: 10 }; // <15%
-        break;
-      case 'low':
-        requestData = { 
-          quantityPercentage: 25,
-          climateConditions: ['Sequía'],
-          reuseDisposition: 'Dispuesto'
-        };
-        break;
-      case 'quality_issue':
-        requestData = { qualityIrc: 85 }; // >80%
-        break;
-      case 'family':
-        requestData = { householdSize: 6 };
-        break;
-      default:
-        requestData = { quantityPercentage: 50 }; // normal
-    }
-
-    const recommendations = await this.recommendationsService.generateRecommendationsPublic(requestData);
+    const { recommendations, scenario, parameters } = await this.recommendationsService.simulateRecommendations(simulateData.scenario);
     
     return {
       success: true,
       data: recommendations,
-      scenario: simulateData.scenario,
-      parameters: requestData
+      scenario,
+      parameters
     };
   }
 
-  // 🔐 ENDPOINTS PRIVADOS (requieren autenticación)
+  // CRUD BÁSICO SIN AUTENTICACIÓN
 
   @Post()
-  @UseGuards(AuthGuard, RolesGuard)
-  @ApiBearerAuth()
-  @Roles('admin', 'manager')
-  @ApiOperation({ summary: 'Crear una nueva recomendación manualmente' })
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Crear una nueva recomendación' })
   @ApiResponse({ 
     status: HttpStatus.CREATED, 
     description: 'Recomendación creada exitosamente' 
@@ -165,86 +122,104 @@ export class RecommendationsController {
     };
   }
 
-  @Post('generate/quality/:qualityId')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth()
+  @Get()
+  @ApiOperation({ summary: 'Obtener todas las recomendaciones' })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Lista de todas las recomendaciones' 
+  })
+  async findAll(@Query() filters: FilterRecommendationsDto) {
+    return {
+      success: true,
+      data: await this.recommendationsService.findAll(filters)
+    };
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Obtener una recomendación por ID' })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Recomendación encontrada' 
+  })
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return {
+      success: true,
+      data: await this.recommendationsService.findOne(id)
+    };
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Actualizar una recomendación' })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Recomendación actualizada' 
+  })
+  async update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateRecommendationDto: UpdateRecommendationDto,
+  ) {
+    return {
+      success: true,
+      data: await this.recommendationsService.update(id, updateRecommendationDto)
+    };
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Eliminar una recomendación' })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Recomendación eliminada' 
+  })
+  async remove(@Param('id', ParseUUIDPipe) id: string) {
+    await this.recommendationsService.remove(id);
+    return {
+      success: true,
+      message: 'Recomendación eliminada exitosamente'
+    };
+  }
+
+  @Post('generate/quality')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Generar recomendaciones a partir de datos de calidad de agua' })
-  @ApiParam({ 
-    name: 'qualityId', 
-    description: 'ID de los datos de calidad de agua',
-    type: String 
-  })
   @ApiResponse({ 
     status: HttpStatus.CREATED, 
     description: 'Recomendaciones generadas exitosamente' 
   })
   async generateFromQuality(
-    @Param('qualityId', ParseUUIDPipe) qualityId: string,
-    @CurrentUser() user: User,
+    @Body() qualityData: { irca: number; measuredAt?: string }
   ) {
     return {
       success: true,
-      data: await this.recommendationsService.generateFromWaterQuality(qualityId, user?.id)
+      data: await this.recommendationsService.generateFromQualityData(qualityData)
     };
   }
 
-  @Post('generate/quantity/:quantityId')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth()
+  @Post('generate/quantity')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Generar recomendaciones a partir de datos de cantidad de agua' })
-  @ApiParam({ 
-    name: 'quantityId', 
-    description: 'ID de los datos de cantidad de agua',
-    type: String 
-  })
   @ApiResponse({ 
     status: HttpStatus.CREATED, 
     description: 'Recomendaciones generadas exitosamente' 
   })
   async generateFromQuantity(
-    @Param('quantityId', ParseUUIDPipe) quantityId: string,
-    @CurrentUser() user: User,
+    @Body() quantityData: { level: number; measuredAt?: string }
   ) {
     return {
       success: true,
-      data: await this.recommendationsService.generateFromWaterQuantity(quantityId, user?.id)
+      data: await this.recommendationsService.generateFromQuantityData(quantityData)
     };
   }
 
-  @Get('my-recommendations')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Obtener las recomendaciones del usuario actual' })
+  @Get('stats/overview')
+  @ApiOperation({ summary: 'Obtener estadísticas de recomendaciones' })
   @ApiResponse({ 
     status: HttpStatus.OK, 
-    description: 'Recomendaciones del usuario' 
+    description: 'Estadísticas de recomendaciones' 
   })
-  async findMyRecommendations(
-    @CurrentUser() user: User,
-    @Query() filters: FilterRecommendationsDto,
-  ) {
+  async getStats() {
     return {
       success: true,
-      data: await this.recommendationsService.findByUser(user.id, filters)
+      data: await this.recommendationsService.getStats()
     };
   }
-
-  @Get('summary')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Obtener resumen de recomendaciones del usuario actual' })
-  @ApiResponse({ 
-    status: HttpStatus.OK, 
-    description: 'Resumen de recomendaciones' 
-  })
-  async getSummary(@CurrentUser() user: User) {
-    return {
-      success: true,
-      data: await this.recommendationsService.getRecommendationSummary(user.id)
-    };
-  }
-
-  // ... resto de endpoints privados (mantienen UseGuards)
 }

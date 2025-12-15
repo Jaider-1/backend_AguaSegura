@@ -39,6 +39,41 @@ export class WaterQuantityService {
     });
   }
 
+  async updateByUser(id: string, userId: string, updateWaterQuantityDto: UpdateWaterQuantityDto): Promise<WaterQuantity> {
+    const waterQuantity = await this.findOneByUser(id, userId);
+    Object.assign(waterQuantity, updateWaterQuantityDto);
+    return this.waterQuantityRepository.save(waterQuantity);
+  }
+
+  async findAllWithFilters(
+    startDate?: Date, 
+    endDate?: Date,
+    limit?: number
+  ): Promise<WaterQuantity[]> {
+    const queryOptions: any = {
+      order: { createdAt: "DESC" },
+    };
+    // Apply date filters if provided
+    if (startDate && endDate) {
+      queryOptions.where = {
+        createdAt: Between(startDate, endDate),
+      };
+    } else if (startDate) {
+      queryOptions.where = {
+        createdAt: MoreThanOrEqual(startDate),
+      };
+    } else if (endDate) {
+      queryOptions.where = {
+        createdAt: LessThanOrEqual(endDate),
+      };
+    }
+    // Apply limit if provided
+    if (limit) {
+      queryOptions.take = limit;
+    }
+    return this.waterQuantityRepository.find(queryOptions);
+  }
+
   async findByUserWithFilters(
     userId: string, 
     startDate?: Date, 

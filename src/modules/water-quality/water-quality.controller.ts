@@ -1,13 +1,11 @@
+// src/modules/water-quality/water-quality.controller.ts
 import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { WaterQualityService } from './water-quality.service';
 import { CreateWaterQualityDto } from './dto/create-water-quality.dto';
-// ELIMINAR: import { JwtAuthGuard } from '../../common/guards/auth.guard';
-// ELIMINAR: import { UseGuards } from '@nestjs/common';
 
 @ApiTags('water-quality')
 @Controller('water-quality')
-// ELIMINAR: @UseGuards(JwtAuthGuard)
 export class WaterQualityController {
   constructor(private readonly waterQualityService: WaterQualityService) {}
 
@@ -15,7 +13,10 @@ export class WaterQualityController {
   @ApiOperation({ summary: 'Crear nuevo registro de calidad de agua' })
   @ApiResponse({ status: 201, description: 'Registro creado exitosamente' })
   async create(@Body() createDto: CreateWaterQualityDto) {
-    return this.waterQualityService.create(createDto);
+    return {
+      success: true,
+      data: await this.waterQualityService.create(createDto)
+    };
   }
 
   @Get()
@@ -28,21 +29,30 @@ export class WaterQualityController {
   ) {
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
-    return this.waterQualityService.findAll(undefined, start, end, limit);
+    return {
+      success: true,
+      data: await this.waterQualityService.findAll(undefined, start, end, limit)
+    };
   }
 
   @Get('latest')
   @ApiOperation({ summary: 'Obtener el último registro de calidad' })
   @ApiResponse({ status: 200, description: 'Último registro' })
   async getLatest() {
-    return this.waterQualityService.getLatest();
+    return {
+      success: true,
+      data: await this.waterQualityService.getLatest()
+    };
   }
 
   @Get('stats')
   @ApiOperation({ summary: 'Obtener estadísticas de calidad' })
   @ApiResponse({ status: 200, description: 'Estadísticas' })
   async getStats() {
-    return this.waterQualityService.getStats();
+    return {
+      success: true,
+      data: await this.waterQualityService.getStats()
+    };
   }
 
   @Get(':id')
@@ -50,6 +60,9 @@ export class WaterQualityController {
   @ApiResponse({ status: 200, description: 'Registro encontrado' })
   @ApiResponse({ status: 404, description: 'Registro no encontrado' })
   async findOne(@Param('id') id: string) {
-    return this.waterQualityService.findOne(id);
+    return {
+      success: true,
+      data: await this.waterQualityService.findOne(id)
+    };
   }
 }

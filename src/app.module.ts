@@ -9,14 +9,19 @@ import { User } from './modules/users/entities/user.entity';
 import { WaterQuantity } from './modules/water-quantity/entities/water-quantity.entity';
 import { WaterQuality } from './modules/water-quality/entities/water-quality.entity';
 import configuration from './config/configuration';
-import { Measurement } from './modules/recommendations/entities/measurement.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Recommendation } from './modules/recommendations/entities/recommendation.entity';
 import { RecommendationRules } from './modules/recommendations/entities/recommendation-rules.entity';
+import { FormResponsesModule } from './modules/form-responses/form-responses.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [configuration],
+    }),
+    
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST || 'localhost',
@@ -24,28 +29,17 @@ import { RecommendationRules } from './modules/recommendations/entities/recommen
       username: process.env.DB_USERNAME || 'postgres',
       password: process.env.DB_PASSWORD || 'jaider123',
       database: process.env.DB_DATABASE || 'aguasegura',
-      entities: [
-        __dirname + '/../**/*.entity{.ts,.js}',
-        RecommendationRules, // Asegúrate de incluirla
-      ],
-      synchronize: true, // ⚠️ SOLO para desarrollo
+      entities: [__dirname + '/../**/*.entity{.ts,.js}'],
+      synchronize: true,
       autoLoadEntities: true,
     }),
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '3600s' },
-      }),
-    }),
-    
     
     AuthModule,
     UsersModule,
     RecommendationsModule,
     WaterQuantityModule,
     WaterQualityModule,
+    FormResponsesModule,
   ],
 })
 export class AppModule {}

@@ -54,7 +54,7 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
       max_quantity_percentage: 100,
       min_quality_irc: 0,
       max_quality_irc: 5,
-      recommendation_text: 'Mantener buenas prácticas. Realizar mantenimiento preventivo del sistema de almacenamiento.',
+      recommendation_text: 'Mantener 👌buenas prácticas. Realizar mantenimiento preventivo del sistema de almacenamiento.',
       priority_level: 'low',
       traffic_light_color: 'green',
       category: 'ahorro',
@@ -125,11 +125,11 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
         ruleData.category
       ]);
       
-      console.log(`✅ Regla creada: ${ruleData.name}`);
+      console.log(`Regla creada: ${ruleData.name}`);
     } else {
-      console.log(`⏭️  Regla ya existe: ${ruleData.name}`);
+      console.log(`Regla ya existe: ${ruleData.name}`);
     }
   }
 
-  console.log('✅ Seed de reglas completado exitosamente');
+  console.log('Seed de reglas completado exitosamente');
 }

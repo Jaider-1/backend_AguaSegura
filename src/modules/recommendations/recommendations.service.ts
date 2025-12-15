@@ -1,7 +1,6 @@
-// src/modules/recommendations/recommendations.service.ts
-import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, forwardRef, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, FindOptionsWhere, In } from 'typeorm';
+import { Repository, Between, FindOptionsWhere, In, Not, IsNull } from 'typeorm';
 import { DataSource } from 'typeorm';
 import { Recommendation } from './entities/recommendation.entity';
 import { CreateRecommendationDto } from './dto/create-recommendation.dto';
@@ -9,167 +8,42 @@ import { UpdateRecommendationDto } from './dto/update-recommendation.dto';
 import { FilterRecommendationsDto } from './dto/filter-recommendations.dto';
 import { RecommendationAlgorithm } from './algorithms/recommendation.algorithm';
 import { RecommendationRequestData, RecommendationStats } from '../recommendations/interfaces/recommendation.interface';
-import { WaterQualityService } from '../water-quality/water-quality.service';
-import { WaterQuantityService } from '../water-quantity/water-quantity.service';
 import { UsersService } from '../users/users.service';
+import { WaterQualityService } from '../water-quality/water-quality.service';
+import { WaterQuantityService } from '../water-quantity/water-quantity.service';  
+
 
 @Injectable()
 export class RecommendationsService {
   constructor(
     @InjectRepository(Recommendation)
     private recommendationsRepository: Repository<Recommendation>,
-    
     private dataSource: DataSource,
-    
     private recommendationAlgorithm: RecommendationAlgorithm,
-    
-    @Inject(forwardRef(() => WaterQualityService))
     private waterQualityService: WaterQualityService,
-    
-    @Inject(forwardRef(() => WaterQuantityService))
     private waterQuantityService: WaterQuantityService,
-    
-    @Inject(forwardRef(() => UsersService))
     private usersService: UsersService,
   ) {}
 
-  // 1. Método CREATE
+  // Método CREATE simplificado
   async create(createDto: CreateRecommendationDto): Promise<Recommendation> {
-    let expiresAt: Date | null = null;
-    if (createDto.expiresAt) {
-      expiresAt = new Date(createDto.expiresAt);
-    }
-
     const recommendation = this.recommendationsRepository.create({
       ...createDto,
-      expiresAt,
+      expiresAt: createDto.expiresAt ? new Date(createDto.expiresAt) : null,
     });
 
     return this.recommendationsRepository.save(recommendation);
   }
 
-  // 2. Método GENERATE FROM WATER QUALITY
-  // src/modules/recommendations/recommendations.service.ts (métodos corregidos)
-
-// 2. Método GENERATE FROM WATER QUALITY (CORREGIDO)
-async generateFromWaterQuality(qualityId: string, userId?: string): Promise<Recommendation[]> {
-  const qualityData = await this.waterQualityService.findOne(qualityId);
-  
-  // Calcular IRCA
-  const irca = this.recommendationAlgorithm.calculateIRCA(qualityData);
-  
-  // Obtener datos del usuario si está disponible
-  let userData = {};
-  if (userId) {
-    try {
-      const user = await this.usersService.findOne(userId);
-      userData = {
-        householdSize: user.householdSize,
-        reuseDisposition: user.reuseDisposition,
-        climateConditions: user.climateConditions,
-      };
-    } catch (error) {
-      console.warn(`No se pudieron obtener datos del usuario ${userId}`);
-    }
-  }
-
-  const requestData: RecommendationRequestData = {
-    userId,
-    waterQualityId: qualityId,
-    qualityIrc: irca,
-    ...userData,
-  };
-
-  // Obtener recomendaciones generadas
-  const generatedRecs = await this.recommendationAlgorithm.generateRecommendations(requestData);
-  
-  // Guardar en la base de datos
-  const savedRecommendations: Recommendation[] = [];
-  
-  for (const genRec of generatedRecs) {
-    const recommendation = this.recommendationsRepository.create({
-      message: genRec.message,
-      priorityLevel: genRec.priorityLevel,
-      trafficLightColor: genRec.trafficLightColor,
-      category: genRec.category,
-      parameters: genRec.parameters,
-      userId,
-      waterQualityId: qualityId,
-    });
-    
-    const saved = await this.recommendationsRepository.save(recommendation);
-    savedRecommendations.push(saved);
-  }
-  
-  return savedRecommendations;
-}
-
-// 3. Método GENERATE FROM WATER QUANTITY (CORREGIDO)
-async generateFromWaterQuantity(quantityId: string, userId?: string): Promise<Recommendation[]> {
-  const quantityData = await this.waterQuantityService.findOne(quantityId);
-  
-  // Obtener datos del usuario si está disponible
-  let userData = {};
-  if (userId) {
-    try {
-      const user = await this.usersService.findOne(userId);
-      userData = {
-        householdSize: user.householdSize,
-        reuseDisposition: user.reuseDisposition,
-        climateConditions: user.climateConditions,
-      };
-    } catch (error) {
-      console.warn(`No se pudieron obtener datos del usuario ${userId}`);
-    }
-  }
-
-  const requestData: RecommendationRequestData = {
-    userId,
-    waterQuantityId: quantityId,
-    quantityPercentage: quantityData.level,
-    ...userData,
-  };
-
-  // Obtener recomendaciones generadas
-  const generatedRecs = await this.recommendationAlgorithm.generateRecommendations(requestData);
-  
-  // Guardar en la base de datos
-  const savedRecommendations: Recommendation[] = [];
-  
-  for (const genRec of generatedRecs) {
-    const recommendation = this.recommendationsRepository.create({
-      message: genRec.message,
-      priorityLevel: genRec.priorityLevel,
-      trafficLightColor: genRec.trafficLightColor,
-      category: genRec.category,
-      parameters: genRec.parameters,
-      userId,
-      waterQuantityId: quantityId,
-    });
-    
-    const saved = await this.recommendationsRepository.save(recommendation);
-    savedRecommendations.push(saved);
-  }
-  
-  return savedRecommendations;
-}
-
-// 4. Método GENERATE RECOMMENDATIONS FOR USER (CORREGIDO)
-async generateRecommendationsForUser(userId: string): Promise<Recommendation[]> {
-  try {
-    const user = await this.usersService.findOne(userId);
-    
-    const requestData: RecommendationRequestData = {
-      userId,
-      householdSize: user.householdSize,
-      reuseDisposition: user.reuseDisposition,
-      climateConditions: user.climateConditions,
+  // Método para generar desde datos de calidad
+  async generateFromQualityData(data: { irca: number; measuredAt?: string }): Promise<Recommendation[]> {
+    const requestData = {
+      qualityIrc: data.irca,
+      measuredAt: data.measuredAt || new Date().toISOString(),
     };
 
-    // Obtener recomendaciones generadas
     const generatedRecs = await this.recommendationAlgorithm.generateRecommendations(requestData);
     
-    // Guardar en la base de datos
     const savedRecommendations: Recommendation[] = [];
     
     for (const genRec of generatedRecs) {
@@ -179,7 +53,6 @@ async generateRecommendationsForUser(userId: string): Promise<Recommendation[]> 
         trafficLightColor: genRec.trafficLightColor,
         category: genRec.category,
         parameters: genRec.parameters,
-        userId,
       });
       
       const saved = await this.recommendationsRepository.save(recommendation);
@@ -187,29 +60,50 @@ async generateRecommendationsForUser(userId: string): Promise<Recommendation[]> 
     }
     
     return savedRecommendations;
-  } catch (error) {
-    throw new NotFoundException(`Usuario con ID ${userId} no encontrado`);
   }
-}
 
-  // 5. Método FIND ALL
+  // Método para generar desde datos de cantidad
+  async generateFromQuantityData(data: { level: number; measuredAt?: string }): Promise<Recommendation[]> {
+    const requestData = {
+      quantityPercentage: data.level,
+      measuredAt: data.measuredAt || new Date().toISOString(),
+    };
+
+    const generatedRecs = await this.recommendationAlgorithm.generateRecommendations(requestData);
+    
+    const savedRecommendations: Recommendation[] = [];
+    
+    for (const genRec of generatedRecs) {
+      const recommendation = this.recommendationsRepository.create({
+        message: genRec.message,
+        priorityLevel: genRec.priorityLevel,
+        trafficLightColor: genRec.trafficLightColor,
+        category: genRec.category,
+        parameters: genRec.parameters,
+      });
+      
+      const saved = await this.recommendationsRepository.save(recommendation);
+      savedRecommendations.push(saved);
+    }
+    
+    return savedRecommendations;
+  }
+
+  // Métodos CRUD básicos...
   async findAll(filters: FilterRecommendationsDto) {
-    const where: FindOptionsWhere<Recommendation> = {};
+    const where: any = {};
     const { page = 1, limit = 10, ...filterParams } = filters;
 
-    if (filterParams.userId) where.userId = filterParams.userId;
-    if (filterParams.isRead !== undefined) where.isRead = filterParams.isRead;
-    if (filterParams.isApplied !== undefined) where.isApplied = filterParams.isApplied;
-    
-    if (filterParams.priorityLevels && filterParams.priorityLevels.length > 0) {
+    // Aplicar filtros...
+    if (filterParams.priorityLevels?.length) {
       where.priorityLevel = In(filterParams.priorityLevels);
     }
     
-    if (filterParams.trafficLightColors && filterParams.trafficLightColors.length > 0) {
+    if (filterParams.trafficLightColors?.length) {
       where.trafficLightColor = In(filterParams.trafficLightColors);
     }
     
-    if (filterParams.categories && filterParams.categories.length > 0) {
+    if (filterParams.categories?.length) {
       where.category = In(filterParams.categories);
     }
 
@@ -219,10 +113,9 @@ async generateRecommendationsForUser(userId: string): Promise<Recommendation[]> 
 
     const [recommendations, total] = await this.recommendationsRepository.findAndCount({
       where,
-      relations: ['user', 'waterQuality', 'waterQuantity'],
       order: { 
-        createdAt: 'DESC',
-        priorityLevel: 'ASC'
+        priorityLevel: 'ASC',
+        createdAt: 'DESC'
       },
       skip: (page - 1) * limit,
       take: limit,
@@ -239,11 +132,9 @@ async generateRecommendationsForUser(userId: string): Promise<Recommendation[]> 
     };
   }
 
-  // 6. Método FIND ONE
-  async findOne(id: string): Promise<Recommendation> {
+  async findOne(id: string, userId?: string ): Promise<Recommendation> {
     const recommendation = await this.recommendationsRepository.findOne({
-      where: { id },
-      relations: ['user', 'waterQuality', 'waterQuantity'],
+      where: { id, ...(userId ? { userId } : {}) },
     });
 
     if (!recommendation) {
@@ -253,27 +144,79 @@ async generateRecommendationsForUser(userId: string): Promise<Recommendation[]> 
     return recommendation;
   }
 
-  // 7. Método FIND BY USER
+  async update(id: string, updateDto: UpdateRecommendationDto): Promise<Recommendation> {
+    const recommendation = await this.findOne(id);
+
+    if (updateDto.isApplied && !recommendation.isApplied) {
+      recommendation.appliedAt = new Date();
+    }
+
+    Object.assign(recommendation, updateDto);
+
+    return this.recommendationsRepository.save(recommendation);
+  }
+
+  async remove(id: string): Promise<void> {
+    const result = await this.recommendationsRepository.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException(`Recomendación con ID ${id} no encontrada`);
+    }
+  }
+
+  // ============ MÉTODOS PARA USUARIOS REGISTRADOS ============
+
+  async generateFromWaterQuality(qualityId: string, userId: string): Promise<Recommendation[]> {
+    const qualityData = await this.waterQualityService.findOne(qualityId);
+    const irca = this.recommendationAlgorithm.calculateIRCA(qualityData);
+    
+    const user = await this.usersService.findOne(userId);
+    
+    const requestData: RecommendationRequestData = {
+      userId,
+      waterQualityId: qualityId,
+      qualityIrc: irca,
+      householdSize: user.householdSize,
+      reuseDisposition: user.reuseDisposition,
+      climateConditions: user.climateConditions,
+    };
+
+    return this.saveRecommendations(requestData, { userId, waterQualityId: qualityId });
+  }
+
+  async generateFromWaterQuantity(quantityId: string, userId: string): Promise<Recommendation[]> {
+    const quantityData = await this.waterQuantityService.findOne(quantityId);
+    const user = await this.usersService.findOne(userId);
+    
+    const requestData: RecommendationRequestData = {
+      userId,
+      waterQuantityId: quantityId,
+      quantityPercentage: quantityData.level,
+      householdSize: user.householdSize,
+      reuseDisposition: user.reuseDisposition,
+      climateConditions: user.climateConditions,
+    };
+
+    return this.saveRecommendations(requestData, { userId, waterQuantityId: quantityId });
+  }
+
+  async generateRecommendationsForUser(userId: string): Promise<Recommendation[]> {
+    const user = await this.usersService.findOne(userId);
+    
+    const requestData: RecommendationRequestData = {
+      userId,
+      householdSize: user.householdSize,
+      reuseDisposition: user.reuseDisposition,
+      climateConditions: user.climateConditions,
+    };
+
+    return this.saveRecommendations(requestData, { userId });
+  }
+
   async findByUser(userId: string, filters?: FilterRecommendationsDto): Promise<Recommendation[]> {
     const where: FindOptionsWhere<Recommendation> = { userId };
     
-    if (filters?.priorityLevels && filters.priorityLevels.length > 0) {
-      where.priorityLevel = In(filters.priorityLevels);
-    }
-    
-    if (filters?.trafficLightColors && filters.trafficLightColors.length > 0) {
-      where.trafficLightColor = In(filters.trafficLightColors);
-    }
-    
-    if (filters?.categories && filters.categories.length > 0) {
-      where.category = In(filters.categories);
-    }
-    
-    if (filters?.isRead !== undefined) where.isRead = filters.isRead;
-    if (filters?.isApplied !== undefined) where.isApplied = filters.isApplied;
-
-    if (filters?.startDate && filters?.endDate) {
-      where.createdAt = Between(new Date(filters.startDate), new Date(filters.endDate));
+    if (filters) {
+      this.applyFiltersToWhere(where, filters);
     }
 
     return this.recommendationsRepository.find({
@@ -287,50 +230,241 @@ async generateRecommendationsForUser(userId: string): Promise<Recommendation[]> 
     });
   }
 
-  // 8. Método UPDATE
-  async update(id: string, updateDto: UpdateRecommendationDto): Promise<Recommendation> {
-    const recommendation = await this.findOne(id);
-
-    if (updateDto.isApplied && !recommendation.isApplied) {
-      recommendation.appliedAt = new Date();
-    }
-
-    Object.assign(recommendation, updateDto);
-
-    return this.recommendationsRepository.save(recommendation);
-  }
-
-  // 9. Método MARK AS READ
-  async markAsRead(id: string): Promise<Recommendation> {
-    const recommendation = await this.findOne(id);
+  async markAsRead(id: string, userId?: string): Promise<Recommendation> {
+    const recommendation = await this.findOne(id, userId);
     recommendation.isRead = true;
     return this.recommendationsRepository.save(recommendation);
   }
 
-  // 10. Método MARK AS APPLIED
-  async markAsApplied(id: string): Promise<Recommendation> {
-    const recommendation = await this.findOne(id);
+  async markAsApplied(id: string, userId?: string): Promise<Recommendation> {
+    const recommendation = await this.findOne(id, userId);
     recommendation.isApplied = true;
     recommendation.appliedAt = new Date();
     return this.recommendationsRepository.save(recommendation);
   }
 
-  // 11. Método REMOVE
-  async remove(id: string): Promise<void> {
-    const result = await this.recommendationsRepository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException(`Recomendación con ID ${id} no encontrada`);
-    }
+  // ============ MÉTODOS PARA INVITADOS (NO REGISTRADOS) ============
+
+  async generateRecommendationsPublic(data: {
+    quantityPercentage?: number;
+    qualityIrc?: number;
+    climateConditions?: string[];
+    reuseDisposition?: string;
+    householdSize?: number;
+  }): Promise<any[]> {
+    const requestData: RecommendationRequestData = {
+      // No incluir userId para invitados
+      quantityPercentage: data.quantityPercentage,
+      qualityIrc: data.qualityIrc,
+      climateConditions: data.climateConditions,
+      reuseDisposition: data.reuseDisposition,
+      householdSize: data.householdSize,
+    };
+
+    // Solo generar, no guardar en DB
+    const generatedRecs = await this.recommendationAlgorithm.generateRecommendations(requestData);
+    
+    return generatedRecs.map(rec => ({
+      message: rec.message,
+      priorityLevel: rec.priorityLevel,
+      trafficLightColor: rec.trafficLightColor,
+      category: rec.category,
+      parameters: rec.parameters,
+      generatedAt: new Date().toISOString(),
+      isForGuest: true // Marcar como para invitado
+    }));
   }
 
-  // 12. Método GET STATS
+  async simulateRecommendations(scenario: 'critical' | 'low' | 'normal' | 'quality_issue' | 'family'): Promise<{
+    recommendations: any[];
+    scenario: string;
+    parameters: any;
+  }> {
+    let requestData: any;
+    
+    switch (scenario) {
+      case 'critical':
+        requestData = { quantityPercentage: 10 }; // <15%
+        break;
+      case 'low':
+        requestData = { 
+          quantityPercentage: 25,
+          climateConditions: ['Sequía'],
+          reuseDisposition: 'Dispuesto'
+        };
+        break;
+      case 'quality_issue':
+        requestData = { qualityIrc: 85 }; // >80%
+        break;
+      case 'family':
+        requestData = { householdSize: 6 };
+        break;
+      default:
+        requestData = { quantityPercentage: 50 }; // normal
+    }
+
+    const recommendations = await this.generateRecommendationsPublic(requestData);
+    
+    return {
+      recommendations,
+      scenario,
+      parameters: requestData
+    };
+  }
+
+  // ============ MÉTODOS DE REGLAS Y ESTADÍSTICAS ============
+
+  async getActiveRules() {
+    await this.ensureRecommendationRulesTable();
+    
+    return this.dataSource.query(`
+      SELECT * FROM recommendation_rules 
+      WHERE is_active = true 
+      ORDER BY 
+        CASE priority_level 
+          WHEN 'critical' THEN 1
+          WHEN 'high' THEN 2
+          WHEN 'medium' THEN 3
+          WHEN 'low' THEN 4
+        END
+    `);
+  }
+
+  async findRulesByCategory(category: string) {
+    const allRules = await this.getActiveRules();
+    return allRules.filter(rule => rule.category === category);
+  }
+
+  async updateRule(id: string, updateData: any) {
+    const fields = [];
+    const values = [];
+    
+    for (const [key, value] of Object.entries(updateData)) {
+      const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+      fields.push(`${dbKey} = $${fields.length + 2}`);
+      values.push(value);
+    }
+    
+    if (fields.length === 0) {
+      throw new Error('No hay campos para actualizar');
+    }
+    
+    const query = `
+      UPDATE recommendation_rules 
+      SET ${fields.join(', ')}, updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `;
+    
+    const result = await this.dataSource.query(query, [id, ...values]);
+    
+    if (result.length === 0) {
+      throw new NotFoundException(`Regla con ID ${id} no encontrada`);
+    }
+    
+    return result[0];
+  }
+
   async getStats(userId?: string): Promise<RecommendationStats> {
     const queryBuilder = this.recommendationsRepository.createQueryBuilder('rec');
 
     if (userId) {
       queryBuilder.where('rec.userId = :userId', { userId });
+    } else {
+      queryBuilder.where('rec.userId IS NULL'); // Solo recomendaciones de invitados
     }
 
+    const stats = await this.calculateStatsFromQueryBuilder(queryBuilder);
+
+    return stats;
+  }
+
+  async getRecommendationSummary(userId?: string) {
+    const stats = await this.getStats(userId);
+    
+    const whereCondition: any = {};
+    if (userId) {
+      whereCondition.userId = userId;
+    } else {
+      whereCondition.userId = IsNull();
+    }
+    
+    const recentRecommendations = await this.recommendationsRepository.find({
+      where: whereCondition,
+      relations: ['waterQuality', 'waterQuantity'],
+      order: { createdAt: 'DESC' },
+      take: 5,
+    });
+
+    const criticalUnread = await this.recommendationsRepository.count({
+      where: {
+        ...whereCondition,
+        priorityLevel: 'critical',
+        isRead: false,
+      },
+    });
+
+    return {
+      summary: stats,
+      recentRecommendations,
+      criticalUnread,
+      hasCriticalAlerts: criticalUnread > 0,
+    };
+  }
+
+  // ============ MÉTODOS PRIVADOS DE APOYO ============
+
+  private async saveRecommendations(
+    requestData: RecommendationRequestData, 
+    relationData: { userId?: string; waterQualityId?: string; waterQuantityId?: string }
+  ): Promise<Recommendation[]> {
+    const generatedRecs = await this.recommendationAlgorithm.generateRecommendations(requestData);
+    
+    const savedRecommendations: Recommendation[] = [];
+    
+    for (const genRec of generatedRecs) {
+      const recommendation = this.recommendationsRepository.create({
+        message: genRec.message,
+        priorityLevel: genRec.priorityLevel,
+        trafficLightColor: genRec.trafficLightColor,
+        category: genRec.category,
+        parameters: genRec.parameters,
+        ...relationData,
+      });
+      
+      const saved = await this.recommendationsRepository.save(recommendation);
+      savedRecommendations.push(saved);
+    }
+    
+    return savedRecommendations;
+  }
+
+  private applyFiltersToWhere(
+    where: FindOptionsWhere<Recommendation>, 
+    filters: Partial<FilterRecommendationsDto>
+  ): void {
+    if (filters.userId) where.userId = filters.userId;
+    if (filters.isRead !== undefined) where.isRead = filters.isRead;
+    if (filters.isApplied !== undefined) where.isApplied = filters.isApplied;
+    
+    if (filters.priorityLevels?.length) {
+      where.priorityLevel = In(filters.priorityLevels);
+    }
+    
+    if (filters.trafficLightColors?.length) {
+      where.trafficLightColor = In(filters.trafficLightColors);
+    }
+    
+    if (filters.categories?.length) {
+      where.category = In(filters.categories);
+    }
+
+    if (filters.startDate && filters.endDate) {
+      where.createdAt = Between(new Date(filters.startDate), new Date(filters.endDate));
+    }
+  }
+
+  private async calculateStatsFromQueryBuilder(queryBuilder: any): Promise<RecommendationStats> {
     const stats = await queryBuilder
       .select([
         'COUNT(rec.id) as total',
@@ -375,129 +509,35 @@ async generateRecommendationsForUser(userId: string): Promise<Recommendation[]> 
     };
   }
 
-  // 13. Método GET RECOMMENDATION SUMMARY
-  async getRecommendationSummary(userId?: string) {
-    const stats = await this.getStats(userId);
-    
-    const recentRecommendations = await this.recommendationsRepository.find({
-      where: userId ? { userId } : {},
-      relations: ['waterQuality', 'waterQuantity'],
-      order: { createdAt: 'DESC' },
-      take: 5,
-    });
-
-    // Calcular recomendaciones críticas no leídas
-    const criticalUnread = await this.recommendationsRepository.count({
-      where: {
-        ...(userId && { userId }),
-        priorityLevel: 'critical',
-        isRead: false,
-      },
-    });
-
-    return {
-      summary: stats,
-      recentRecommendations,
-      criticalUnread,
-      hasCriticalAlerts: criticalUnread > 0,
-    };
-  }
-
-  // 14. Método GET ACTIVE RULES
-  async getActiveRules() {
-    return this.dataSource.query(`
-      SELECT 
-        id, name, description, 
-        min_quantity_percentage, max_quantity_percentage,
-        min_quality_irc, max_quality_irc,
-        climate_conditions, reuse_dispositions,
-        recommendation_text, priority_level,
-        traffic_light_color, category, is_active,
-        created_at, updated_at
-      FROM recommendation_rules 
-      WHERE is_active = true
-      ORDER BY 
-        CASE priority_level 
-          WHEN 'critical' THEN 1
-          WHEN 'high' THEN 2
-          WHEN 'medium' THEN 3
-          WHEN 'low' THEN 4
-        END
-    `);
-  }
-
-  // 15. Método FIND RULES BY CATEGORY
-  async findRulesByCategory(category: string) {
-    const allRules = await this.getActiveRules();
-    return allRules.filter(rule => rule.category === category);
-  }
-
-  // 16. Método UPDATE RULE
-  async updateRule(id: string, updateData: any) {
-    // Actualizar directamente en la base de datos
-    const fields = [];
-    const values = [];
-    
-    for (const [key, value] of Object.entries(updateData)) {
-      // Convertir camelCase a snake_case para la base de datos
-      const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
-      fields.push(`${dbKey} = $${fields.length + 2}`);
-      values.push(value);
-    }
-    
-    if (fields.length === 0) {
-      throw new Error('No hay campos para actualizar');
-    }
-    
-    const query = `
-      UPDATE recommendation_rules 
-      SET ${fields.join(', ')}, updated_at = NOW()
-      WHERE id = $1
-      RETURNING *
-    `;
-    
+  private async ensureRecommendationRulesTable(): Promise<void> {
     try {
-      const result = await this.dataSource.query(query, [id, ...values]);
-      
-      if (result.length === 0) {
-        throw new NotFoundException(`Regla con ID ${id} no encontrada`);
-      }
-      
-      return result[0];
+      await this.dataSource.query(`SELECT 1 FROM recommendation_rules LIMIT 1`);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-      throw new Error(`Error al actualizar la regla: ${errorMessage}`);
+      console.log('📝 Creando tabla recommendation_rules...');
+      
+      await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS recommendation_rules (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          name VARCHAR(255) NOT NULL,
+          description TEXT,
+          min_quantity_percentage DECIMAL(5,2),
+          max_quantity_percentage DECIMAL(5,2),
+          min_quality_irc DECIMAL(5,2),
+          max_quality_irc DECIMAL(5,2),
+          climate_conditions TEXT[],
+          reuse_dispositions TEXT[],
+          recommendation_text TEXT NOT NULL,
+          priority_level VARCHAR(20) NOT NULL CHECK (priority_level IN ('low', 'medium', 'high', 'critical')),
+          traffic_light_color VARCHAR(10) NOT NULL CHECK (traffic_light_color IN ('green', 'yellow', 'red')),
+          category VARCHAR(50) NOT NULL,
+          is_active BOOLEAN DEFAULT TRUE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      
+      console.log('✅ Tabla recommendation_rules creada');
     }
   }
-
-async generateRecommendationsPublic(data: {
-  quantityPercentage?: number;
-  qualityIrc?: number;
-  climateConditions?: string[];
-  reuseDisposition?: string;
-  householdSize?: number;
-}): Promise<any[]> {
-  
-  const requestData: RecommendationRequestData = {
-    quantityPercentage: data.quantityPercentage,
-    qualityIrc: data.qualityIrc,
-    climateConditions: data.climateConditions,
-    reuseDisposition: data.reuseDisposition,
-    householdSize: data.householdSize,
-  };
-
-  // Obtener recomendaciones generadas
-  const generatedRecs = await this.recommendationAlgorithm.generateRecommendations(requestData);
-  
-  // Convertir a formato de respuesta (sin guardar en DB)
-  return generatedRecs.map(rec => ({
-    message: rec.message,
-    priorityLevel: rec.priorityLevel,
-    trafficLightColor: rec.trafficLightColor,
-    category: rec.category,
-    parameters: rec.parameters,
-    generatedAt: new Date().toISOString()
-  }));
-}
-
+      
 }
