@@ -1,5 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('form_responses')
 export class FormResponse {
@@ -9,33 +8,36 @@ export class FormResponse {
   @Column()
   userId: string;
 
-  // ===== SECCIÓN 1: Disposición al Reuso =====
+  // Sección 1: Disposición al Reuso
   @Column()
   willingToReuse: boolean;
 
-  @Column('int')
+  @Column({ type: 'int' })
   reuseKnowledgeLevel: number; // 1-5
 
-  @Column('int')
+  @Column({ type: 'int' })
   motivationLevel: number; // 1-5
 
-  // ===== SECCIÓN 2: Métodos de Reuso =====
+  // Sección 2: Métodos de Reuso
   @Column('simple-array')
-  currentMethods: string[]; // Array de métodos
+  currentMethods: string[];
 
-  @Column('text', { nullable: true })
+  @Column({ nullable: true })
   otherMethodsDescription: string;
 
-  // ===== SECCIÓN 3: Fuentes de Agua =====
+  // Sección 3: Fuentes de Agua
   @Column('simple-array')
-  potentialSources: string[]; // Array de fuentes
+  potentialSources: string[];
 
-  // ===== SECCIÓN 4: Barreras =====
+  // Sección 4: Barreras
   @Column('simple-array')
-  barriers: string[]; // Array de barreras
+  barriers: string[];
 
-  // ===== SECCIÓN 5: Información del Hogar =====
-  @Column('int')
+  @Column({ type: 'int', nullable: true })
+  helpNeededLevel: number; // 1-5
+
+  // Sección 5: Información del Hogar
+  @Column({ type: 'int' })
   householdMembers: number;
 
   @Column()
@@ -44,13 +46,8 @@ export class FormResponse {
   @Column({ nullable: true })
   location: string;
 
-  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  @Column({ type: 'float', nullable: true })
   monthlyWaterConsumption: number;
-
-  // Relación
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'userId' })
-  user: User;
 
   @CreateDateColumn()
   createdAt: Date;
