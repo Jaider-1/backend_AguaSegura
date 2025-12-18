@@ -3,35 +3,50 @@ import { DataSource } from 'typeorm';
 
 export async function seedRecommendations(dataSource: DataSource): Promise<void> {
   const rules = [
-    // 1. EMERGENCIA POR ESCASEZ CRÍTICA (<15%)
+    // 1. EMERGENCIA HÍDRICA EXTREMA (ROJO)
     {
-      name: 'Emergencia hídrica - Nivel crítico',
-      description: 'Reserva de agua inferior al 15% según estándares OMS',
+      name: 'Emergencia hídrica extrema',
+      description: 'Reserva crítica de agua (<15%) - Priorizar necesidades básicas WASH según OMS',
       min_quantity_percentage: 0,
       max_quantity_percentage: 15,
-      recommendation_text: 'EMERGENCIA: Implementar medidas de racionamiento inmediato. Priorizar solo agua para beber, preparar alimentos e higiene personal básica. Suspender riego de jardines, lavado de autos y otras actividades no esenciales. Consumir mínimo 2 litros por persona al día según OMS.',
+      min_quality_irc: 0,
+      max_quality_irc: 100,
+      recommendation_text: '🔴 PELIGRO: Implementar racionamiento inmediato para garantizar acceso básico a agua para beber, higiene y saneamiento. Priorizar 20-50 litros por persona al día según estándares mínimos de la OMS para prevención de enfermedades. Suspender TODOS los usos no esenciales (riego, lavado de vehículos, piscinas). Consumo estrictamente para necesidades básicas WASH.',
       priority_level: 'critical',
       traffic_light_color: 'red',
       category: 'emergencia',
     },
-    
-    // 2. ESCASEZ MODERADA (16-30%)
+
+    // 2. ESCASEZ HÍDRICA SEGÚN DEFINICIÓN ONU (ROJO)
     {
-      name: 'Escasez moderada - Ahorro intensivo',
-      description: 'Reserva entre 16-30% en condiciones de sequía',
+      name: 'Escasez hídrica',
+      description: 'Nivel de estrés hídrico según definición ONU (<1000 m³/persona/año)',
       min_quantity_percentage: 16,
       max_quantity_percentage: 30,
       min_quality_irc: 0,
-      max_quality_irc: 14,
-      climate_conditions: ['Sequía'],
-      reuse_dispositions: ['Dispuesto'],
-      recommendation_text: 'AHORRO INTENSIVO: Recolectar agua de la ducha para el inodoro. Reutilizar agua de lavar verduras para plantas. Reducir tiempo de ducha a 5 minutos máximo. Usar lavadora solo con carga completa. Según UNESCO, estas prácticas pueden ahorrar hasta 50% del consumo doméstico.',
+      max_quality_irc: 5,
+      climate_conditions: ['Sequía', 'Estiaje'],
+      recommendation_text: '🔴 PELIGRO: Activar plan de contingencia por escasez. Consumo máximo recomendado: 50-100 litros por persona al día. Priorizar usos que garanticen salud, dignidad e higiene según ODS 6. Implementar sistemas de riego por goteo para agricultura de subsistencia y establecer sistemas de recolección de agua de lluvia si es viable técnicamente.',
       priority_level: 'high',
-      traffic_light_color: 'yellow',
-      category: 'ahorro',
+      traffic_light_color: 'red',
+      category: 'escasez',
     },
 
-    // 3. CALIDAD REGULAR EN ÉPOCA DE LLUVIAS
+    // 3. AGUA NO POTABLE - CALIDAD PELIGROSA (ROJO)
+    {
+      name: 'Agua no potable',
+      description: 'Agua con IRCA >80% - Riesgo alto para la salud según OMS',
+      min_quantity_percentage: 0,
+      max_quantity_percentage: 100,
+      min_quality_irc: 80.1,
+      max_quality_irc: 100,
+      recommendation_text: '🔴 PELIGRO: AGUA NO APTA PARA CONSUMO HUMANO. Notificar inmediatamente a las autoridades sanitarias locales. Utilizar exclusivamente agua embotellada con sello de seguridad o agua hervida/desinfectada según protocolos OMS para todas las necesidades. Para desinfectar recipientes: usar solución de cloro al 0.5% (5 ml de cloro doméstico al 5% por litro de agua), enjuagar y secar al aire.',
+      priority_level: 'critical',
+      traffic_light_color: 'red',
+      category: 'emergencia',
+    },
+
+    // 4. CALIDAD MEDIA - PRECAUCIONES EN LLUVIAS (AMARILLO)
     {
       name: 'Calidad media - Precauciones en lluvias',
       description: 'Agua de calidad aceptable durante temporada lluviosa (IRCA 15-35%)',
@@ -39,86 +54,86 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
       max_quantity_percentage: 70,
       min_quality_irc: 15,
       max_quality_irc: 35,
-      climate_conditions: ['Lluvias'],
-      recommendation_text: 'PRECAUCIÓN: Hervir el agua antes de consumir (1 minuto en ebullición según OMS). Usar filtros de sedimentos. Evitar recolectar agua de los primeros 10 minutos de lluvia. Almacenar agua en recipientes limpios y tapados.',
+      climate_conditions: ['Lluvias', 'Invierno'],
+      recommendation_text: '🟡 PRECAUCIÓN: Aplicar tratamiento de agua en el hogar (HWTS) según protocolos OMS. Opción 1: Hervir el agua durante 1 minuto completo tras alcanzar ebullición. Opción 2: Usar desinfectante a base de cloro (dosis según concentración del producto). Almacenar en recipientes limpios, con tapa estrecha y dispensador (como garrafón con grifo) para prevenir recontaminación. No recolectar agua de los primeros 20 minutos de lluvia intensa.',
       priority_level: 'medium',
       traffic_light_color: 'yellow',
       category: 'calidad',
     },
 
-    // 4. SITUACIÓN ÓPTIMA
+    // 5. REUSO SEGURO PARA ACTIVIDADES NO POTABLES (AMARILLO)
     {
-      name: 'Condiciones óptimas - Mantenimiento preventivo',
-      description: 'Agua abundante y de excelente calidad (IRCA <5%)',
-      min_quantity_percentage: 71,
+      name: 'Reuso seguro',
+      description: 'Promoción de prácticas de reuso seguro para actividades no potables',
+      min_quantity_percentage: 0,
       max_quantity_percentage: 100,
       min_quality_irc: 0,
-      max_quality_irc: 5,
-      recommendation_text: 'SITUACIÓN ÓPTIMA: Mantener buenas prácticas de conservación. Revisar y limpiar tanques de almacenamiento cada 6 meses. Verificar que no haya fugas. La ONU recomienda usar máximo 100 litros por persona al día como consumo sostenible.',
-      priority_level: 'low',
-      traffic_light_color: 'green',
-      category: 'mantenimiento',
-    },
-
-    // 5. CALIDAD PELIGROSA (IRCA >80%)
-    {
-      name: 'Emergencia sanitaria - Agua no potable',
-      description: 'Agua con IRCA mayor a 80% (riesgo alto según OMS)',
-      min_quality_irc: 80.1,
       max_quality_irc: 100,
-      recommendation_text: 'PELIGRO: AGUA NO POTABLE. NO CONSUMIR. Contactar inmediatamente a autoridades sanitarias. Usar agua embotellada o hervida para todas las necesidades. Desinfectar recipientes con cloro (2 gotas por litro, esperar 30 minutos). Según OMS, agua con IRCA >80% representa riesgo alto para la salud.',
-      priority_level: 'critical',
-      traffic_light_color: 'red',
-      category: 'emergencia',
-    },
-
-    // 6. PROMOCIÓN DE REUSO
-    {
-      name: 'Reuso responsable - Iniciación',
-      description: 'Promoción de prácticas de reuso para principiantes',
-      reuse_dispositions: ['En dudas'],
-      recommendation_text: 'COMENZAR CON REUSO: 1) Recolectar agua de aire acondicionado para plantas. 2) Reutilizar agua de cocer huevos (enfriada) para regar. 3) Usar agua de lavar frutas para el inodoro. La UNESCO estima que el reuso puede reducir consumo doméstico en 30-40%.',
+      reuse_dispositions: ['Dispuesto', 'En dudas'],
+      recommendation_text: '🟡 PRÁCTICA SEGURA: Implementar reuso exclusivamente para actividades no potables. Ejemplos seguros: 1) Recolectar agua del último enjuague de la lavadora para lavado de pisos exteriores o inodoros. 2) Utilizar agua de deshumidificador o aire acondicionado para riego de plantas ornamentales. ADVERTENCIA CRÍTICA: Nunca reutilizar agua para beber, preparar alimentos, higiene personal (lavado de manos, ducha) o limpieza de utensilios de cocina. Separar claramente tuberías de agua potable y no potable.',
       priority_level: 'medium',
       traffic_light_color: 'yellow',
       category: 'reuso',
     },
 
-    // 7. FAMILIAS GRANDES (>5 personas)
+    // 6. GESTIÓN PARA HOGARES GRANDES (AMARILLO)
     {
-      name: 'Gestión familiar eficiente',
-      description: 'Estrategias para hogares con 5+ miembros',
-      recommendation_text: 'Establecer horarios de ducha (máximo 5 minutos por persona). Usar lavavajillas solo lleno. Educar a niños sobre cierre de llaves. La ONU recomienda monitorear consumo familiar semanal. Meta: menos de 500 litros/día para familia de 5.',
+      name: 'Gestión para hogares grandes',
+      description: 'Estrategias de eficiencia para hogares con 5+ miembros según ODS 6',
+      min_quantity_percentage: 0,
+      max_quantity_percentage: 100,
+      min_quality_irc: 0,
+      max_quality_irc: 5,
+      recommendation_text: '🟡 EFICIENCIA COLECTIVA: Instalar dispositivos de bajo flujo en todos los grifos y duchas (reducción de 30-50% en consumo). Establecer duchas máximo 5 minutos por persona. Meta de consumo familiar basada en estándar ODS 6: 100 litros/persona/día (ejemplo: máximo 500 litros/día para familia de 5 personas). Implementar sistema de monitoreo semanal del consumo. Educar a todos los miembros en cierre de llaves durante enjabonado, cepillado de dientes, etc.',
       priority_level: 'medium',
       traffic_light_color: 'yellow',
-      category: 'familias',
+      category: 'hogar',
     },
 
-    // 8. NUEVA: CALIDAD ACEPTABLE (IRCA 36-79%)
+    // 7. CALIDAD ACEPTABLE CON TRATAMIENTO (AMARILLO)
     {
       name: 'Calidad aceptable con tratamiento',
-      description: 'Agua que requiere tratamiento básico (IRCA 36-79%)',
+      description: 'Agua que requiere tratamiento obligatorio (IRCA 36-79%) según OMS',
+      min_quantity_percentage: 0,
+      max_quantity_percentage: 100,
       min_quality_irc: 36,
       max_quality_irc: 79,
-      recommendation_text: 'Usar filtro de carbón activado o hervir agua (3 minutos). Agregar cloro si almacena (1 gota por litro). Consumir dentro de 24 horas después de tratamiento. La OMS recomienda tratamiento para agua con IRCA >35%.',
+      recommendation_text: '🟡 TRATAMIENTO OBLIGATORIO: Agua requiere doble barrera de protección según OMS. Paso 1: Filtración con filtro de cerámica o carbón activado. Paso 2: Desinfección con cloro (1-2 mg/L de cloro residual libre, contacto mínimo 30 minutos) o ebullición (3 minutos tras hervir). Medir cloro residual con tiras reactivas (rango seguro: 0.2-0.5 mg/L). Agua tratada debe consumirse dentro de las 24 horas posteriores al tratamiento. No almacenar más de 48 horas incluso tratada.',
       priority_level: 'high',
       traffic_light_color: 'yellow',
       category: 'calidad',
     },
 
-    // 9. NUEVA: CONSERVACIÓN EN CONDICIONES NORMALES
+    // 8. CONDICIONES ÓPTIMAS - SOSTENIBILIDAD (AZUL)
+    {
+      name: 'Condiciones óptimas - Sostenibilidad',
+      description: 'Agua abundante y de excelente calidad (IRCA <5%) - Enfoque ODS 6',
+      min_quantity_percentage: 71,
+      max_quantity_percentage: 100,
+      min_quality_irc: 0,
+      max_quality_irc: 5,
+      recommendation_text: '🔵 SOSTENIBILIDAD: Mantener consumo dentro de metas sostenibles ODS 6 (ideal ≤100 litros/persona/día). Inspeccionar, limpiar y desinfectar tanques de almacenamiento cada 6 meses (solución de cloro al 0.1%). Verificar y reparar inmediatamente fugas en tuberías internas y conexiones domiciliarias. Establecer programa de monitoreo periódico de calidad (parámetros microbiológicos básicos mensuales, químicos semestrales). Promover prácticas de uso eficiente como estándar permanente, no solo en escasez.',
+      priority_level: 'low',
+      traffic_light_color: 'blue',
+      category: 'óptimo',
+    },
+
+    // 9. CONSERVACIÓN SOSTENIBLE - MANTENIMIENTO (AZUL)
     {
       name: 'Conservación sostenible',
-      description: 'Prácticas diarias de ahorro según estándares ONU',
+      description: 'Prácticas de conservación y reducción de pérdidas según estándares ONU',
       min_quantity_percentage: 50,
-      max_quantity_percentage: 70,
-      recommendation_text: 'Reparar goteos inmediatamente (una gota por segundo = 10,000 litros/año). Instalar aireadores en grifos. Regar plantas al amanecer o atardecer. La ONU recomienda duchas de 5 minutos máximo para uso sostenible.',
+      max_quantity_percentage: 100,
+      min_quality_irc: 0,
+      max_quality_irc: 5,
+      recommendation_text: '🔵 MANTENIMIENTO PREVENTIVO: Reparar todas las fugas internas (grifos, inodoros) y reportar fugas en red pública. Una gota por segundo = ~10,000 litros/año desperdiciados. Instalar aireadores en el 100% de grifos (ahorro 30-50%). Programar riego de jardines al amanecer o atardecer (reduce evaporación 40%). Promover tecnologías WASH eficientes: inodoros de bajo volumen (6L/descarga), lavadoras de alta eficiencia (45L/carga vs 70L tradicional). La ONU estima que la reducción de pérdidas en distribución puede aumentar disponibilidad en 20-30%.',
       priority_level: 'low',
-      traffic_light_color: 'green',
-      category: 'conservacion',
+      traffic_light_color: 'blue',
+      category: 'conservación',
     }
   ];
 
-  console.log('Sembrando reglas de recomendación mejoradas según OMS/UNESCO...');
+  console.log('Sembrando reglas de recomendación actualizadas según estándares ONU/OMS...');
 
   for (const ruleData of rules) {
     // Verificar si la regla ya existe
@@ -148,12 +163,42 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
         ruleData.traffic_light_color,
         ruleData.category
       ]);
-      
+
       console.log(`✅ Regla creada: ${ruleData.name}`);
     } else {
-      console.log(`⚠️  Regla ya existe: ${ruleData.name}`);
+      // Actualizar regla existente
+      await dataSource.query(`
+        UPDATE recommendation_rules SET
+          description = $2,
+          min_quantity_percentage = $3,
+          max_quantity_percentage = $4,
+          min_quality_irc = $5,
+          max_quality_irc = $6,
+          climate_conditions = $7,
+          reuse_dispositions = $8,
+          recommendation_text = $9,
+          priority_level = $10,
+          traffic_light_color = $11,
+          category = $12
+        WHERE name = $1
+      `, [
+        ruleData.name,
+        ruleData.description,
+        ruleData.min_quantity_percentage,
+        ruleData.max_quantity_percentage,
+        ruleData.min_quality_irc || null,
+        ruleData.max_quality_irc || null,
+        ruleData.climate_conditions || null,
+        ruleData.reuse_dispositions || null,
+        ruleData.recommendation_text,
+        ruleData.priority_level,
+        ruleData.traffic_light_color,
+        ruleData.category
+      ]);
+      
+      console.log(`🔄 Regla actualizada: ${ruleData.name}`);
     }
   }
 
-  console.log('✅ Seed de reglas mejoradas completado exitosamente');
+  console.log('✅ Seed de reglas de recomendación ONU/OMS completado exitosamente');
 }
