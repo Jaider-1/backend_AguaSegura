@@ -27,7 +27,7 @@ import { FormResponsesModule } from './modules/form-responses/form-responses.mod
       host: process.env.DB_HOST || 'localhost',
       port: parseInt(process.env.DB_PORT || '5432'),
       username: process.env.DB_USERNAME || 'postgres',
-      password: process.env.DB_PASSWORD || 'jaider123',
+      password: process.env.DB_PASSWORD || '1171',
       database: process.env.DB_DATABASE || 'aguasegura',
       entities: [__dirname + '/../**/*.entity{.ts,.js}'],
       synchronize: true,
