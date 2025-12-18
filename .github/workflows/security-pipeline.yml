@@ -10,8 +10,6 @@ jobs:
       
       - name: SAST - Static Application Security Testing
         uses: github/codeql-action/analyze@v2
-        with:
-          languages: typescript
           
       - name: Dependency Scanning
         run: |
@@ -19,7 +17,7 @@ jobs:
           npx snyk test --severity-threshold=high
           
       - name: Secret Scanning
-        uses: actions/gitleaks@v2
+        uses: zricethezav/gitleaks-action@v2.3.3
         with:
           config-path: .gitleaks.toml
           
