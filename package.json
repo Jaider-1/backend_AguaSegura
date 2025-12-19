@@ -3,9 +3,7 @@
   "version": "1.0.0",
   "description": "Backend para sistema de gestión de agua",
   "scripts": {
-
     "build": "nest build",
-
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
@@ -46,8 +44,10 @@
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.0",
     "class-validator": "^0.14.0",
+    "cross-spawn": "^7.0.5",
     "csv-parser": "^3.2.0",
     "express": "^4.16.0",
+    "glob": "^10.5.0",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
