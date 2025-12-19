@@ -27,7 +27,11 @@
     "ci:full": "npm run typecheck && npm run format:check && npm run lint:check && npm run test:cov",
     "clean": "rm -rf dist coverage .nyc_output",
     "reset": "npm run clean && rm -rf node_modules && npm install",
-    "preinstall": "npx npm-force-resolutions"
+    "preinstall": "npx npm-force-resolutions",
+    "start": "nest start",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.9",
