@@ -39,3 +39,5 @@ EXPOSE 3000
 
 CMD ["node", "dist/main.js"]
 # Ejecuta la aplicación NestJS ya compilada
+FROM node:20-alpine
+RUN npm install --only=production

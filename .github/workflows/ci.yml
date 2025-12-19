@@ -50,6 +50,10 @@ jobs:
     - name: Verificación de tipos TypeScript
       run: npx tsc --noEmit --strict --pretty
 
+    - name: Scan backend image with Trivy
+      run: trivy image --ignorefile .trivyignore --exit-code 0 --severity HIGH,CRITICAL aguasegura-backend:latest
+
+
     - name: Buscar console.log() no permitidos
       run: |
         echo "🔍 Buscando console.log no autorizados..."
@@ -303,3 +307,5 @@ jobs:
         echo "🔔 CI falló - Revisa los detalles en GitHub Actions"
         # Aquí podrías agregar notificaciones a Slack/Discord/etc
         # usando webhooks si lo necesitas
+
+        

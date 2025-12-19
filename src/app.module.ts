@@ -5,14 +5,8 @@ import { UsersModule } from './modules/users/users.module';
 import { RecommendationsModule } from './modules/recommendations/recommendations.module';
 import { WaterQuantityModule } from './modules/water-quantity/water-quantity.module';
 import { WaterQualityModule } from './modules/water-quality/water-quality.module';
-import { User } from './modules/users/entities/user.entity';
-import { WaterQuantity } from './modules/water-quantity/entities/water-quantity.entity';
-import { WaterQuality } from './modules/water-quality/entities/water-quality.entity';
 import configuration from './config/configuration';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { Recommendation } from './modules/recommendations/entities/recommendation.entity';
-import { RecommendationRules } from './modules/recommendations/entities/recommendation-rules.entity';
+import { ConfigModule } from '@nestjs/config';
 import { FormResponsesModule } from './modules/form-responses/form-responses.module';
 
 @Module({
