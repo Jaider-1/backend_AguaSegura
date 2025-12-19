@@ -1,19 +1,16 @@
 version: 2
 updates:
-  # 📌 Actualizar dependencias de npm
+  # Actualiza dependencias de npm (NestJS, TypeScript, etc.)
   - package-ecosystem: "npm"
+    directory: "/"              # Ubicación del package.json
+    schedule:
+      interval: "weekly"        # Opciones: daily, weekly, monthly
+    open-pull-requests-limit: 10
+    allow:
+      - dependency-type: "direct"   # Solo actualiza dependencias del proyecto
+
+  # Actualiza GitHub Actions (opcional pero recomendado)
+  - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"   # Corre todos los días
-    open-pull-requests-limit: 10
-    commit-message:
-      prefix: "fix(deps)"
-      include: "scope"
-    # Habilita la resolución automática de vulnerabilidades
-    allow:
-      - dependency-type: "direct"
-      - dependency-type: "all"
-    # Permite actualizar versiones mayores
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
+      interval: "weekly"
