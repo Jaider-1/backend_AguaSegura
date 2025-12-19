@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Backend para sistema de gestión de agua",
   "scripts": {
+
+    "build": "nest build",
+
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
