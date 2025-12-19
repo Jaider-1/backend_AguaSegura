@@ -15,25 +15,19 @@
     "migration:run": "typeorm migration:run -d database/data-source.ts",
     "migration:revert": "typeorm migration:revert -d database/data-source.ts",
     "seed:run": "ts-node database/scripts/run-seeders.ts",
-     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
+    "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "lint:check": "eslint \"{src,test}/**/*.ts\"",
     "lint:report": "eslint \"{src,test}/**/*.ts\" --format=json --output-file=eslint-report.json",
-    
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
-    
     "typecheck": "tsc --noEmit --strict",
-    
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    
     "audit": "npm audit --audit-level=high",
     "outdated": "npm outdated",
-    
     "ci:full": "npm run typecheck && npm run format:check && npm run lint:check && npm run test:cov",
-    
     "clean": "rm -rf dist coverage .nyc_output",
     "reset": "npm run clean && rm -rf node_modules && npm install"
   },
@@ -50,6 +44,7 @@
     "class-transformer": "^0.5.0",
     "class-validator": "^0.14.0",
     "csv-parser": "^3.2.0",
+    "express": "^4.16.0",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
