@@ -1,8 +1,8 @@
-module.exports = {
+export default {
   parser: '@typescript-eslint/parser',
   parserOptions: {
     project: 'tsconfig.json',
-    tsconfigRootDir: __dirname,
+    tsconfigRootDir: new URL('.', import.meta.url).pathname,
     sourceType: 'module',
   },
   plugins: [
@@ -22,7 +22,7 @@ module.exports = {
     jest: true,
   },
   ignorePatterns: [
-    '.eslintrc.js', 
+    '.eslintrc.cjs', 
     'dist/**', 
     'node_modules/**',
     'coverage/**',
