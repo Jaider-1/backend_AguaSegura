@@ -1,15 +1,19 @@
 version: 2
 updates:
-  # Dependencias npm
+  # 📌 Actualizar dependencias de npm
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "daily"
-    open-pull-requests-limit: 5
-
-  # GitHub Actions
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-
+      interval: "daily"   # Corre todos los días
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "fix(deps)"
+      include: "scope"
+    # Habilita la resolución automática de vulnerabilidades
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "all"
+    # Permite actualizar versiones mayores
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
