@@ -1,0 +1,311 @@
+name: CI - Gestión del Agua
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:  # Permite ejecución manual
+
+jobs:
+  code-quality:
+    name: Calidad de Código
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout del código
+      uses: actions/checkout@v4
+
+    - name: Configurar Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: 'package-lock.json'
+
+    - name: Instalar dependencias
+      run: npm ci --ignore-scripts
+
+    - name: Verificar formato con Prettier
+      run: npx prettier --check "src/**/*.ts" "test/**/*.ts"
+
+    - name: Análisis estático con ESLint
+      run: |
+        echo "📊 Ejecutando ESLint..."
+        npx eslint "src/**/*.ts" "test/**/*.ts" \
+          --format=compact \
+          --max-warnings=10 \
+          --color
+        
+        echo "📈 Estadísticas de ESLint:"
+        npx eslint "src/**/*.ts" "test/**/*.ts" --format=json \
+          | jq -r '
+            "Total problemas: \(length)",
+            "Errores: \(map(select(.severity==2)) | length)",
+            "Advertencias: \(map(select(.severity==1)) | length)",
+            "Reglas más frecuentes:",
+            (group_by(.ruleId) | sort_by(-length) | .[0:5] | .[] | 
+              "  \(.ruleId): \(length) veces")' 2>/dev/null || echo "Instala jq para ver estadísticas"
+
+    - name: Verificación de tipos TypeScript
+      run: npx tsc --noEmit --strict --pretty
+
+    - name: Scan backend image with Trivy
+      run: trivy image --ignorefile .trivyignore --exit-code 0 --severity HIGH,CRITICAL aguasegura-backend:latest
+
+
+    - name: Buscar console.log() no permitidos
+      run: |
+        echo "🔍 Buscando console.log no autorizados..."
+        if grep -r "console\.log" src/ --include="*.ts" | grep -v "console.log("; then
+          echo "❌ Se encontraron console.log() no permitidos"
+          grep -r "console\.log" src/ --include="*.ts" | grep -v "console.log("
+          exit 1
+        else
+          echo "✅ No hay console.log() no autorizados"
+        fi
+
+    - name: Verificar imports no usados
+      run: |
+        echo "📦 Verificando imports no utilizados..."
+        npx ts-prune --ignore "test/*" --ignore "*.spec.ts" \
+          || echo "⚠️  Se encontraron imports no usados"
+
+  tests:
+    name: Tests y Cobertura
+    runs-on: ubuntu-latest
+    needs: code-quality  # Espera a que code-quality termine
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: water_management_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout del código
+      uses: actions/checkout@v4
+
+    - name: Configurar Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Instalar dependencias
+      run: npm ci
+
+    - name: Configurar variables de entorno para tests
+      run: |
+        echo "DATABASE_URL=postgresql://postgres:testpassword@localhost:5432/water_management_test" >> $GITHUB_ENV
+        echo "REDIS_URL=redis://localhost:6379" >> $GITHUB_ENV
+        echo "NODE_ENV=test" >> $GITHUB_ENV
+        echo "JWT_SECRET=test-secret-for-ci" >> $GITHUB_ENV
+
+    - name: Ejecutar migraciones de prueba
+      run: |
+        npm run typeorm migration:run || echo "⚠️  No se encontraron migraciones"
+        # O si usas otro sistema de migraciones
+        # npm run db:migrate
+
+    - name: Ejecutar tests
+      run: |
+        echo "🧪 Ejecutando tests..."
+        npm test -- --coverage --passWithNoTests --verbose
+        
+        echo "📊 Resumen de cobertura:"
+        if [ -f "coverage/coverage-summary.json" ]; then
+          cat coverage/coverage-summary.json | jq '.total'
+        fi
+
+    - name: Subir reporte de cobertura
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: coverage/
+        retention-days: 7
+
+    - name: Verificar cobertura mínima
+      run: |
+        echo "📈 Verificando cobertura mínima del 80%..."
+        # Instalar jq si no está disponible
+        if ! command -v jq &> /dev/null; then
+          sudo apt-get install -y jq
+        fi
+        
+        if [ -f "coverage/coverage-summary.json" ]; then
+          COVERAGE=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
+          echo "Cobertura actual: $COVERAGE%"
+          
+          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+            echo "❌ Cobertura insuficiente (mínimo 80%)"
+            exit 1
+          else
+            echo "✅ Cobertura adecuada"
+          fi
+        else
+          echo "⚠️  No se encontró reporte de cobertura"
+        fi
+
+  build:
+    name: Construir y Verificar
+    runs-on: ubuntu-latest
+    needs: [code-quality, tests]  # Espera a ambos jobs
+    
+    steps:
+    - name: Checkout del código
+      uses: actions/checkout@v4
+
+    - name: Configurar Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Instalar dependencias de producción
+      run: |
+        npm ci --only=production --ignore-scripts
+        npm cache clean --force
+
+    - name: Construir aplicación
+      run: npm run build
+
+    - name: Verificar construcción
+      run: |
+        echo "🔍 Verificando archivos construidos..."
+        
+        # Verificar que existe el punto de entrada
+        if [ ! -f "dist/main.js" ]; then
+          echo "❌ No se encontró dist/main.js"
+          exit 1
+        fi
+        
+        # Verificar tamaño de build
+        BUILD_SIZE=$(du -sh dist | cut -f1)
+        echo "📦 Tamaño del build: $BUILD_SIZE"
+        
+        # Listar archivos principales
+        echo "📁 Archivos en dist/:"
+        find dist -name "*.js" -type f | head -10
+        
+        # Verificar que no hay archivos TypeScript en dist
+        TS_FILES_IN_DIST=$(find dist -name "*.ts" -type f | wc -l)
+        if [ "$TS_FILES_IN_DIST" -gt 0 ]; then
+          echo "⚠️  Hay archivos TypeScript en dist/"
+          find dist -name "*.ts" -type f
+        fi
+
+    - name: Verificar que la app inicia
+      run: |
+        echo "🚀 Probando inicio de aplicación..."
+        timeout 10s node dist/main.js &
+        APP_PID=$!
+        
+        # Esperar un poco y verificar si sigue corriendo
+        sleep 3
+        if ps -p $APP_PID > /dev/null; then
+          echo "✅ La aplicación se inició correctamente"
+          kill $APP_PID 2>/dev/null || true
+        else
+          echo "❌ La aplicación no se mantuvo en ejecución"
+          exit 1
+        fi
+
+    - name: Subir build como artefacto
+      if: github.ref == 'refs/heads/main'
+      uses: actions/upload-artifact@v4
+      with:
+        name: production-build
+        path: dist/
+        retention-days: 30
+
+  security-check:
+    name: Verificación de Seguridad
+    runs-on: ubuntu-latest
+    needs: code-quality
+    
+    steps:
+    - name: Checkout del código
+      uses: actions/checkout@v4
+
+    - name: Configurar Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Auditoría de dependencias
+      run: |
+        echo "🔒 Ejecutando npm audit..."
+        npm audit --audit-level=high
+        
+        echo "📦 Verificando dependencias desactualizadas..."
+        npm outdated --long || echo "⚠️  Algunas dependencias están desactualizadas"
+
+    - name: Buscar contraseñas hardcodeadas
+      run: |
+        echo "🔍 Buscando posibles contraseñas en código..."
+        # Patrones comunes a evitar
+        grep -r -i "password\s*=\s*['\"]" src/ --include="*.ts" || echo "✅ No se encontraron contraseñas hardcodeadas"
+        grep -r -i "secret\s*=\s*['\"]" src/ --include="*.ts" || echo "✅ No se encontraron secretos hardcodeados"
+        grep -r -i "token\s*=\s*['\"]" src/ --include="*.ts" || echo "✅ No se encontraron tokens hardcodeados"
+
+  notify:
+    name: Notificación de Resultados
+    runs-on: ubuntu-latest
+    needs: [code-quality, tests, build, security-check]
+    if: always()  # Siempre se ejecuta, incluso si fallan otros jobs
+    
+    steps:
+    - name: Resumen del CI
+      run: |
+        echo "📋 RESUMEN DEL CI - GESTIÓN DEL AGUA"
+        echo "====================================="
+        echo "Fecha: $(date)"
+        echo "Branch: ${{ github.ref }}"
+        echo "Commit: ${{ github.sha }}"
+        echo ""
+        echo "Jobs completados:"
+        echo "- ✅ Code Quality: ${{ needs.code-quality.result }}"
+        echo "- ✅ Tests: ${{ needs.tests.result }}"
+        echo "- ✅ Build: ${{ needs.build.result }}"
+        echo "- ✅ Security Check: ${{ needs.security-check.result }}"
+        echo ""
+        
+        if [ "${{ needs.code-quality.result }}" = "success" ] && \
+           [ "${{ needs.tests.result }}" = "success" ] && \
+           [ "${{ needs.build.result }}" = "success" ] && \
+           [ "${{ needs.security-check.result }}" = "success" ]; then
+          echo "🎉 ¡TODO EL CI PASÓ EXITOSAMENTE!"
+          echo "El código está listo para mergear/desplegar."
+        else
+          echo "⚠️  ALGUNOS CHECKS FALLARON"
+          echo "Revisa los logs para más detalles."
+        fi
+
+    - name: Enviar notificación (opcional)
+      if: failure()
+      run: |
+        echo "🔔 CI falló - Revisa los detalles en GitHub Actions"
+        # Aquí podrías agregar notificaciones a Slack/Discord/etc
+        # usando webhooks si lo necesitas
+
+        

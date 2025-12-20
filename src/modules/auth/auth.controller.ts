@@ -18,7 +18,6 @@ export class AuthController {
   }
 
   @Post('login')
-  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Iniciar sesión' })
   @ApiResponse({ status: 200, description: 'Login exitoso' })
   @ApiResponse({ status: 401, description: 'Credenciales inválidas' })
@@ -27,7 +26,6 @@ export class AuthController {
   }
 
   @Post('guest')
-  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Iniciar como invitado' })
   @ApiResponse({ status: 200, description: 'Sesión de invitado creada' })
   async guestLogin() {
