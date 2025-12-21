@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { Repository, Between, LessThanOrEqual, MoreThanOrEqual, FindOptionsWhere } from 'typeorm';
 import { WaterQuantity } from './entities/water-quantity.entity';
 import { CreateWaterQuantityDto } from './dto/create-water-quantity.dto';
 import { UpdateWaterQuantityDto } from './dto/update-water-quantity.dto';
@@ -50,7 +50,7 @@ export class WaterQuantityService {
     endDate?: Date,
     limit?: number
   ): Promise<WaterQuantity[]> {
-    const queryOptions: any = {
+    const queryOptions: { where?: FindOptionsWhere<WaterQuantity>; order: { createdAt: "DESC" | "ASC" }; take?: number } = {
       order: { createdAt: "DESC" },
     };
     // Apply date filters if provided
@@ -80,7 +80,7 @@ export class WaterQuantityService {
     endDate?: Date, 
     limit?: number
   ): Promise<WaterQuantity[]> {
-    const queryOptions: any = {
+    const queryOptions: { where: FindOptionsWhere<WaterQuantity>; order: { createdAt: "DESC" | "ASC" }; take?: number } = {
       where: { userId },
       order: { createdAt: "DESC" },
     };
@@ -149,7 +149,7 @@ export class WaterQuantityService {
     });
   }
 
-  async getStats(): Promise<any> {
+  async getStats(): Promise<{ totalRecords: number; latestRecord: WaterQuantity | null }> {
     // Example stats - customize based on your needs
     const total = await this.waterQuantityRepository.count();
     const latest = await this.getLatest();

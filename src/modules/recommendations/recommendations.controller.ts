@@ -16,7 +16,6 @@ import {
   ApiTags, 
   ApiOperation, 
   ApiResponse, 
-  ApiQuery,
   ApiParam 
 } from '@nestjs/swagger';
 import { RecommendationsService } from './recommendations.service';

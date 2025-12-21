@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, Between, FindOperator } from 'typeorm';
 import { WaterQuality } from './entities/water-quality.entity';
 import { CreateWaterQualityDto } from './dto/create-water-quality.dto';
 
@@ -13,8 +13,6 @@ export class WaterQualityService {
 
   async create(createDto: CreateWaterQualityDto, userId?: string): Promise<WaterQuality> {
     // Calcular niveles basados en IRCA
-    const { qualityLevel, riskLevel, trafficLight } = this.calculateLevels(createDto.irca);
-
     const waterQuality = this.waterQualityRepository.create({
       ...createDto,
       userId,
@@ -30,7 +28,7 @@ export class WaterQualityService {
     endDate?: Date,
     limit: number = 50,
   ): Promise<WaterQuality[]> {
-    const where: any = {};
+    const where: Record<string, string | FindOperator<Date>> = {};
     
     if (userId) {
       where.userId = userId;
@@ -58,7 +56,7 @@ export class WaterQualityService {
   }
 
   async getLatest(userId?: string): Promise<WaterQuality> {
-    const where: any = {};
+    const where: Record<string, string> = {};
     if (userId) {
       where.userId = userId;
     }
@@ -76,7 +74,7 @@ export class WaterQualityService {
   }
 
   async getStats(userId?: string) {
-    const where: any = {};
+    const where: Record<string, string> = {};
     if (userId) {
       where.userId = userId;
     }

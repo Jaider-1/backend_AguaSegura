@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, Inject, forwardRef, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, FindOptionsWhere, In, Not, IsNull } from 'typeorm';
+import { Repository, Between, FindOptionsWhere, In, IsNull, SelectQueryBuilder } from 'typeorm';
 import { DataSource } from 'typeorm';
 import { Recommendation } from './entities/recommendation.entity';
 import { CreateRecommendationDto } from './dto/create-recommendation.dto';
@@ -91,7 +91,7 @@ export class RecommendationsService {
 
   // Métodos CRUD básicos...
   async findAll(filters: FilterRecommendationsDto) {
-    const where: any = {};
+    const where: FindOptionsWhere<Recommendation> = {};
     const { page = 1, limit = 10, ...filterParams } = filters;
 
     // Aplicar filtros...
@@ -251,7 +251,15 @@ export class RecommendationsService {
     climateConditions?: string[];
     reuseDisposition?: string;
     householdSize?: number;
-  }): Promise<any[]> {
+  }): Promise<Array<{
+    message: string;
+    priorityLevel: string;
+    trafficLightColor: string;
+    category: string;
+    parameters: Record<string, unknown>;
+    generatedAt: string;
+    isForGuest: boolean;
+  }>> {
     const requestData: RecommendationRequestData = {
       // No incluir userId para invitados
       quantityPercentage: data.quantityPercentage,
@@ -276,11 +284,19 @@ export class RecommendationsService {
   }
 
   async simulateRecommendations(scenario: 'critical' | 'low' | 'normal' | 'quality_issue' | 'family'): Promise<{
-    recommendations: any[];
+    recommendations: Array<{
+      message: string;
+      priorityLevel: string;
+      trafficLightColor: string;
+      category: string;
+      parameters: Record<string, unknown>;
+      generatedAt: string;
+      isForGuest: boolean;
+    }>;
     scenario: string;
-    parameters: any;
+    parameters: Record<string, unknown>;
   }> {
-    let requestData: any;
+    let requestData: Partial<RecommendationRequestData>;
     
     switch (scenario) {
       case 'critical':
@@ -335,7 +351,7 @@ export class RecommendationsService {
     return allRules.filter(rule => rule.category === category);
   }
 
-  async updateRule(id: string, updateData: any) {
+  async updateRule(id: string, updateData: Record<string, unknown>) {
     const fields = [];
     const values = [];
     
@@ -382,7 +398,7 @@ export class RecommendationsService {
   async getRecommendationSummary(userId?: string) {
     const stats = await this.getStats(userId);
     
-    const whereCondition: any = {};
+    const whereCondition: FindOptionsWhere<Recommendation> = {};
     if (userId) {
       whereCondition.userId = userId;
     } else {
@@ -464,7 +480,7 @@ export class RecommendationsService {
     }
   }
 
-  private async calculateStatsFromQueryBuilder(queryBuilder: any): Promise<RecommendationStats> {
+  private async calculateStatsFromQueryBuilder(queryBuilder: SelectQueryBuilder<Recommendation>): Promise<RecommendationStats> {
     const stats = await queryBuilder
       .select([
         'COUNT(rec.id) as total',
@@ -512,7 +528,7 @@ export class RecommendationsService {
   private async ensureRecommendationRulesTable(): Promise<void> {
     try {
       await this.dataSource.query(`SELECT 1 FROM recommendation_rules LIMIT 1`);
-    } catch (error) {
+    } catch {
       console.log('📝 Creando tabla recommendation_rules...');
       
       await this.dataSource.query(`
