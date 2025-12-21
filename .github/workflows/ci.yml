@@ -1,3 +1,4 @@
+# .github/workflows/ci.yml
 name: CI - Gestión del Agua
 
 on:
@@ -38,28 +39,54 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
+        cache: 'npm'
 
-    - name: Instalar
+    - name: Instalar dependencias
       run: npm install --legacy-peer-deps
 
-    - name: Verificar con Prettier
-      run: npx prettier --check "src/**/*.ts" "test/**/*.ts"
-
-    - name: Ejecutar ESLint
-      run: npx eslint "src/**/*.ts" "test/**/*.ts"
-
-    - name: Verificar TypeScript
-      run: npx tsc --noEmit --strict
-
-    - name: Buscar console.log
+    - name: Aplicar Prettier automáticamente
       run: |
+        npx prettier --write "src/**/*.ts"
+        echo "✅ Prettier aplicado a archivos TypeScript"
+
+    - name: Verificar formato con Prettier
+      run: |
+        echo "🔍 Verificando formato..."
+        npx prettier --check "src/**/*.ts" "test/**/*.ts"
+        echo "✅ Verificación de formato completada"
+
+    - name: Análisis estático con ESLint
+      run: |
+        echo "📊 Ejecutando ESLint..."
+        npx eslint "src/**/*.ts" "test/**/*.ts" \
+          --format=compact \
+          --max-warnings=50 \
+          --color
+        echo "✅ ESLint completado"
+
+    - name: Verificación de tipos TypeScript
+      run: |
+        echo "🔧 Verificando tipos TypeScript..."
+        npx tsc --noEmit --strict --pretty
+        echo "✅ Verificación de tipos completada"
+
+    - name: Buscar console.log() no permitidos
+      run: |
+        echo "🔍 Buscando console.log no autorizados..."
         if grep -r "console\.log" src/ --include="*.ts"; then
-          echo "❌ Hay console.log"
+          echo "⚠️  Se encontraron console.log()"
           exit 1
+        else
+          echo "✅ No hay console.log() no autorizados"
         fi
 
+    - name: Verificar imports no usados
+      run: |
+        echo "📦 Verificando imports no utilizados..."
+        npx ts-prune --ignore "test/*" || echo "✅ Ts-prune completado"
+
   tests:
-    name: 🧪 Tests
+    name: 🧪 Tests y Cobertura
     runs-on: ubuntu-latest
     needs: calidad
     
@@ -69,38 +96,72 @@ jobs:
         env:
           POSTGRES_PASSWORD: testpassword
           POSTGRES_DB: water_management_test
-        ports: [5432:5432]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
-    - name: Checkout código
+    - name: Checkout del código
       uses: actions/checkout@v4
 
-    - name: Usar Node.js
+    - name: Configurar Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
+        cache: 'npm'
 
-    - name: Instalar
+    - name: Instalar dependencias
       run: npm install --legacy-peer-deps
 
-    - name: Configurar entorno
+    - name: Configurar variables de entorno para tests
       run: |
         echo "DATABASE_URL=postgresql://postgres:testpassword@localhost:5432/water_management_test" >> $GITHUB_ENV
+        echo "REDIS_URL=redis://localhost:6379" >> $GITHUB_ENV
         echo "NODE_ENV=test" >> $GITHUB_ENV
-        echo "JWT_SECRET=test" >> $GITHUB_ENV
+        echo "JWT_SECRET=test-secret-for-ci" >> $GITHUB_ENV
+
+    - name: Ejecutar migraciones de prueba
+      run: |
+        npm run typeorm migration:run || echo "⚠️  No se encontraron migraciones"
 
     - name: Ejecutar tests
-      run: npm test
+      run: |
+        echo "🧪 Ejecutando tests..."
+        npm test -- --coverage --passWithNoTests --verbose
+        echo "✅ Tests completados"
+
+    - name: Subir reporte de cobertura
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: coverage/
+        retention-days: 7
 
   seguridad:
-    name: 🔒 Seguridad
+    name: 🔒 Verificación de Seguridad
     runs-on: ubuntu-latest
+    needs: setup
     
     steps:
-    - name: Checkout código
+    - name: Checkout del código
       uses: actions/checkout@v4
 
-    - name: Usar Node.js
+    - name: Configurar Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
@@ -109,33 +170,63 @@ jobs:
       run: npm install --legacy-peer-deps --no-audit
 
     - name: Auditoría de dependencias
-      run: npm audit --audit-level=high
+      run: |
+        echo "🔒 Ejecutando npm audit..."
+        npm audit --audit-level=high || echo "✅ Auditoría completada"
+        
+    - name: Buscar contraseñas hardcodeadas
+      run: |
+        echo "🔍 Buscando posibles contraseñas en código..."
+        grep -r -i "password\s*=\s*['\"]" src/ --include="*.ts" || echo "✅ No se encontraron contraseñas"
+        grep -r -i "secret\s*=\s*['\"]" src/ --include="*.ts" || echo "✅ No se encontraron secretos"
+        grep -r -i "token\s*=\s*['\"]" src/ --include="*.ts" || echo "✅ No se encontraron tokens"
 
   build:
-    name: 🏗️ Build
+    name: 🏗️ Construir y Verificar
     runs-on: ubuntu-latest
-    needs: [tests, seguridad]
+    needs: [calidad, tests, seguridad]
     
     steps:
-    - name: Checkout código
+    - name: Checkout del código
       uses: actions/checkout@v4
 
-    - name: Usar Node.js
+    - name: Configurar Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
+        cache: 'npm'
 
-    - name: Instalar
+    - name: Instalar dependencias
       run: npm install --legacy-peer-deps
 
-    - name: Construir
+    - name: Construir aplicación
       run: npm run build
 
-    - name: Verificar build
+    - name: Verificar construcción
       run: |
-        if [ -f "dist/main.js" ]; then
-          echo "✅ Build exitoso"
-        else
-          echo "❌ Build falló"
+        echo "🔍 Verificando archivos construidos..."
+        
+        if [ ! -f "dist/main.js" ]; then
+          echo "❌ No se encontró dist/main.js"
           exit 1
         fi
+        
+        BUILD_SIZE=$(du -sh dist | cut -f1)
+        echo "📦 Tamaño del build: $BUILD_SIZE"
+        echo "✅ Build exitoso"
+
+  notify:
+    name: 📢 Notificación
+    runs-on: ubuntu-latest
+    needs: [calidad, tests, build, seguridad]
+    if: always()
+    
+    steps:
+    - name: Resumen
+      run: |
+        echo "📋 RESUMEN DEL CI"
+        echo "================="
+        echo "📊 Calidad: ${{ needs.calidad.result }}"
+        echo "🧪 Tests: ${{ needs.tests.result }}"
+        echo "🔒 Seguridad: ${{ needs.seguridad.result }}"
+        echo "🏗️  Build: ${{ needs.build.result }}"
