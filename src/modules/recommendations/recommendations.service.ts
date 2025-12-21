@@ -529,7 +529,6 @@ export class RecommendationsService {
     try {
       await this.dataSource.query(`SELECT 1 FROM recommendation_rules LIMIT 1`);
     } catch {
-      console.log('📝 Creando tabla recommendation_rules...');
       
       await this.dataSource.query(`
         CREATE TABLE IF NOT EXISTS recommendation_rules (

@@ -7,7 +7,6 @@ import { seedRecommendations } from '../database/seeds/recommendations.seed';
 
 async function bootstrap() {
   // Ejecutar migraciones antes de iniciar la app
-  console.log('📊 Conectando a la base de datos...');
   
   try {
     await AppDataSource.initialize();
