@@ -552,7 +552,6 @@ export class RecommendationsService {
         )
       `);
       
-      console.log('✅ Tabla recommendation_rules creada');
     }
   }
       

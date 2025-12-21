@@ -11,17 +11,12 @@ async function bootstrap() {
   
   try {
     await AppDataSource.initialize();
-    console.log('✅ Base de datos conectada');
     
     // Ejecutar migraciones pendientes
-    console.log('🔄 Ejecutando migraciones...');
     await AppDataSource.runMigrations();
-    console.log('✅ Migraciones completadas');
     
     // Ejecutar seeds
-    console.log('🌱 Ejecutando seeds...');
     await seedRecommendations(AppDataSource);
-    console.log('✅ Seeds completados');
     
     // Iniciar aplicación NestJS
     const app = await NestFactory.create(AppModule);
@@ -52,11 +47,8 @@ async function bootstrap() {
     
     const port = process.env.PORT || 3000;
     await app.listen(port);
-    console.log(`🚀 Servidor ejecutándose en: http://localhost:${port}`);
-    console.log('📚 Documentación API en http://localhost:' + port + '/api');
     
   } catch (error) {
-    console.error('❌ Error al conectar con la base de datos:', error);
     process.exit(1);
   }
 }
