@@ -1,5 +1,5 @@
 // src/modules/water-quality/water-quality.controller.ts
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { WaterQualityService } from './water-quality.service';
 import { CreateWaterQualityDto } from './dto/create-water-quality.dto';
@@ -25,13 +25,26 @@ export class WaterQualityController {
   async findAll(
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
-    @Query('limit') limit?: number,
+    @Query('limit') limit?: string,
   ) {
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
+
+    if (start && isNaN(start.getTime())) {
+      throw new BadRequestException('startDate inválida');
+    }
+    if (end && isNaN(end.getTime())) {
+      throw new BadRequestException('endDate inválida');
+    }
+
+    const parsedLimit = limit ? parseInt(limit, 10) : undefined;
+    if (limit && isNaN(parsedLimit)) {
+      throw new BadRequestException('limit inválido');
+    }
+
     return {
       success: true,
-      data: await this.waterQualityService.findAll(undefined, start, end, limit)
+      data: await this.waterQualityService.findAll(undefined, start, end, parsedLimit)
     };
   }
 
