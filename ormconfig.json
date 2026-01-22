@@ -1,0 +1,14 @@
+{
+  "type": "postgres",
+  "host": "localhost",
+  "port": 5432,
+  "username": "postgres",
+  "password": "jaider123",
+  "database": "aguasegura",
+  "entities": ["src/**/*.entity{.ts,.js}"],
+  "migrations": ["database/migrations/*.ts"],
+  "migrationsTableName": "migrations",
+  "cli": {
+    "migrationsDir": "database/migrations"
+  }
+}

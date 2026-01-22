@@ -3,19 +3,18 @@
   "version": "1.0.0",
   "description": "Backend para sistema de gestión de agua",
   "scripts": {
-    "build": "nest build",
-    "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "docker:dev": "docker-compose up --build",
-    "docker:down": "docker-compose down",
-    "docker:clean": "docker-compose down -v --remove-orphans",
-    "db:logs": "docker logs aguasegura-db -f",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "db:init": "npm run db:migrate && npm run db:seed",
+    "db:migrate": "ts-node database/scripts/run-migrations.ts",
+    "db:seed": "ts-node database/scripts/run-seeders.ts",
+    "db:reset": "npm run db:migrate && npm run db:seed",
+    "migration:generate": "typeorm migration:generate -d database/data-source.ts",
+    "migration:create": "typeorm migration:create database/migrations/NombreMigracion",
+    "migration:run": "typeorm migration:run -d database/data-source.ts",
+    "migration:revert": "typeorm migration:revert -d database/data-source.ts",
+    "seed:run": "ts-node database/scripts/run-seeders.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.20",
@@ -29,6 +28,9 @@
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.0",
     "class-validator": "^0.14.0",
+    "csv-parse": "^6.1.0",
+    "csv-parser": "^3.2.0",
+    "multer": "^2.0.2",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
@@ -36,13 +38,21 @@
     "typeorm": "^0.3.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@nestjs/cli": "^10.4.9",
     "@nestjs/schematics": "^10.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^4.17.0",
-    "@types/node": "^18.0.0",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^18.19.130",
     "@types/passport-jwt": "^3.0.13",
     "@types/passport-local": "^1.0.0",
-    "typescript": "^5.0.0"
+    "eslint": "^9.39.2",
+    "globals": "^16.5.0",
+    "jiti": "^2.6.1",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.50.0"
   }
 }

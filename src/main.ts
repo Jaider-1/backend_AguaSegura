@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { AppDataSource } from '../database/data-source';
+import { seedRecommendations } from '../database/seeds/recommendations.seed';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -13,8 +15,23 @@ async function bootstrap() {
     transform: true,
   }));
   
-  // Configuración de CORS
-  app.enableCors();
+  // Configuración de CORS MÁS ESPECÍFICA
+  app.enableCors({
+    origin: [
+      'http://localhost:8081',    // Expo web
+      'exp://localhost:8081',     // Expo device
+      /\.exp\.direct$/,            // Expo tunnel
+      /\.ngrok\.io$/,              // Ngrok
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type', 
+      'Authorization', 
+      'Accept',
+      'X-Requested-With'
+    ],
+    credentials: true,
+  });
   
   // Configuración de Swagger
   const config = new DocumentBuilder()
@@ -30,5 +47,44 @@ async function bootstrap() {
   await app.listen(3000);
   console.log('🚀 Servidor ejecutándose en http://localhost:3000');
   console.log('📚 Documentación API en http://localhost:3000/api');
+
+
+async function bootstrap() {
+  // Ejecutar migraciones antes de iniciar la app
+  console.log('📊 Conectando a la base de datos...');
+  
+  try {
+    await AppDataSource.initialize();
+    console.log('✅ Base de datos conectada');
+    
+    // Ejecutar migraciones pendientes
+    console.log('🔄 Ejecutando migraciones...');
+    await AppDataSource.runMigrations();
+    console.log('✅ Migraciones completadas');
+    
+    // Ejecutar seeds
+    console.log('🌱 Ejecutando seeds...');
+    await seedRecommendations(AppDataSource);
+    console.log('✅ Seeds completados');
+    
+    // Iniciar aplicación NestJS
+    const app = await NestFactory.create(AppModule);
+    
+    // Configuración de CORS
+    app.enableCors({
+      origin: true,
+      credentials: true,
+    });
+    
+    const port = process.env.PORT || 3000;
+    await app.listen(port);
+    console.log(`🚀 Servidor ejecutándose en: http://localhost:${port}`);
+    
+  } catch (error) {
+    console.error('❌ Error al conectar con la base de datos:', error);
+    process.exit(1);
+  }
+}
+
 }
 bootstrap();
