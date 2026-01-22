@@ -24,7 +24,8 @@ export class AuthController {
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
-
+ 
+  
   @Post('guest')
   @ApiOperation({ summary: 'Iniciar como invitado' })
   @ApiResponse({ status: 200, description: 'Sesión de invitado creada' })
