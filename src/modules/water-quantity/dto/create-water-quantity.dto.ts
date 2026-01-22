@@ -38,4 +38,9 @@ export class CreateWaterQuantityDto {
   @IsOptional()
   @IsString()
   userId?: string;
+
+  @ApiProperty({ example: '2024-06-15', required: false })
+  @IsOptional()
+  @IsString()
+  createdAt?: string;
 }
