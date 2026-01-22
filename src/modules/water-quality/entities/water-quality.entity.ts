@@ -18,6 +18,12 @@ export class WaterQuality {
 
   @Column('decimal', { precision: 5, scale: 2, nullable: true })
   temperature: number; // Temperatura en °C
+
+  @Column('decimal',{ precision: 10, scale: 2, nullable: true }) 
+  conductivity: number; // Conductividad en µS/cm
+
+  @Column('decimal', { precision: 6, scale: 2, nullable: true })
+  dissolvedOxygen: number; // Oxígeno Disuelto en mg/L
   
   // Metadata
   @Column({ nullable: true })

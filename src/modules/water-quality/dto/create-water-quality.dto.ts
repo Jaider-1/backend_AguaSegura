@@ -26,6 +26,16 @@ export class CreateWaterQualityDto {
   @IsNumber()
   temperature?: number;
 
+  @ApiProperty({ example: 500.0, description: 'Conductividad en µS/cm', required: false })
+  @IsOptional()
+  @IsNumber()
+  conductivity?: number;
+
+  @ApiProperty({ example: 8.0, description: 'Oxígeno Disuelto en mg/L', required: false })
+  @IsOptional()
+  @IsNumber()
+  dissolvedOxygen?: number;
+
   @ApiProperty({ 
     example: '2024-01-15T10:30:00Z', 
     description: 'Fecha y hora de medición',
