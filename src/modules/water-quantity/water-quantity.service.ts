@@ -12,6 +12,26 @@ export class WaterQuantityService {
     private waterQuantityRepository: Repository<WaterQuantity>,
   ) {}
 
+
+   async createFromPlainData(plainDto: CreateWaterQuantityDto, userId?: string): Promise<WaterQuantity> {
+    // Convertir formato plano a formato interno
+    const waterQuantityData = {
+      level: plainDto.cantidad_porcentual_agua, // Mapear a level (que ya existe como porcentaje)
+      cantidadPorcentual: plainDto.cantidad_porcentual_agua, // Guardar también en nuevo campo
+      location: plainDto.location,
+      deviceId: plainDto.deviceId,
+      userId: userId || plainDto.userId,
+      // Establecer valores por defecto para otros campos requeridos
+      volume: 0, // Valor por defecto
+      flowRate: 0, // Valor por defecto
+      pressure: 0, // Valor por defecto
+      createdAt: new Date(plainDto.fecha_hora) // Usar la fecha proporcionada
+    };
+
+    const waterQuantity = this.waterQuantityRepository.create(waterQuantityData);
+    return await this.waterQuantityRepository.save(waterQuantity);
+  }
+
   async create(createWaterQuantityDto: CreateWaterQuantityDto, userId: string): Promise<WaterQuantity> {
     // Add userId to the DTO
     const waterQuantityData = {

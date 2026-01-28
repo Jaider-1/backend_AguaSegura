@@ -35,4 +35,20 @@ export class WaterQuality {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @Column('decimal', { precision: 6, scale: 2, nullable: true })
+  conductividadElectrica: number; // µS/cm
+
+  @Column('decimal', { precision: 5, scale: 2, nullable: true })
+  oxigenoDisuelto: number; // mg/L
+
+  // Campos en español para compatibilidad (opcional)
+  @Column('decimal', { precision: 4, scale: 2, nullable: true })
+  pH: number; // Alias de ph
+
+  @Column('decimal', { precision: 5, scale: 2, nullable: true })
+  temperatura: number; // Alias de temperature
+
+  @Column('decimal', { precision: 6, scale: 2, nullable: true })
+  turbidez: number; // Alias de turbidity
 }

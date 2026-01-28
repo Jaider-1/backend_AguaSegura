@@ -11,6 +11,79 @@ export class WaterQualityService {
     private waterQualityRepository: Repository<WaterQuality>,
   ) {}
 
+  private calculateIrcFromParams(params: {
+    pH?: number;
+    turbidez?: number;
+    conductividadElectrica?: number;
+    oxigenoDisuelto?: number;
+    temperatura?: number;
+  }): number {
+    let irca = 50; // Valor por defecto
+    
+    // Lógica simplificada para cálculo de IRCA
+    // En producción, usar fórmula real según normativa
+    if (params.pH !== undefined) {
+      const phScore = Math.abs(7 - (params.pH || 7)) * 10;
+      irca += phScore * 0.2;
+    }
+    
+    if (params.turbidez !== undefined) {
+      const turbScore = (params.turbidez || 0) * 0.5;
+      irca += turbScore * 0.2;
+    }
+    
+    if (params.conductividadElectrica !== undefined) {
+      const condScore = (params.conductividadElectrica || 0) / 100;
+      irca += condScore * 0.2;
+    }
+    
+    if (params.oxigenoDisuelto !== undefined) {
+      const oxyScore = Math.max(0, 8 - (params.oxigenoDisuelto || 8)) * 5;
+      irca += oxyScore * 0.2;
+    }
+    
+    if (params.temperatura !== undefined) {
+      const tempScore = Math.abs(25 - (params.temperatura || 25));
+      irca += tempScore * 0.2;
+    }
+    
+    // Asegurar que esté entre 0 y 100
+    return Math.max(0, Math.min(100, irca));
+  }
+
+  /**
+   * Crear registro desde datos planos
+   */
+  async createFromPlainData(plainDto: CreateWaterQualityDto, userId?: string): Promise<WaterQuality> {
+    // Calcular IRCA a partir de los parámetros
+    const irca = this.calculateIrcFromParams({
+      pH: plainDto.pH,
+      turbidez: plainDto.turbidez,
+      conductividadElectrica: plainDto.conductividad_electrica,
+      oxigenoDisuelto: plainDto.oxigeno_disuelto,
+      temperatura: plainDto.temperatura
+    });
+
+    // Convertir formato plano a formato interno
+    const waterQualityData = {
+      irca,
+      ph: plainDto.pH,
+      pH: plainDto.pH, // Guardar también en campo español
+      turbidity: plainDto.turbidez,
+      turbidez: plainDto.turbidez, // Guardar también en campo español
+      temperature: plainDto.temperatura,
+      temperatura: plainDto.temperatura, // Guardar también en campo español
+      conductividadElectrica: plainDto.conductividad_electrica,
+      oxigenoDisuelto: plainDto.oxigeno_disuelto,
+      deviceId: plainDto.deviceId,
+      userId: userId || plainDto.userId,
+      measuredAt: new Date(plainDto.fecha_hora)
+    };
+
+    const waterQuality = this.waterQualityRepository.create(waterQualityData);
+    return this.waterQualityRepository.save(waterQuality);
+  }
+
   async create(createDto: CreateWaterQualityDto, userId?: string): Promise<WaterQuality> {
     // Calcular niveles basados en IRCA
     const waterQuality = this.waterQualityRepository.create({
