@@ -8,6 +8,7 @@ import { WaterQuantityModule } from './modules/water-quantity/water-quantity.mod
 import { WaterQualityModule } from './modules/water-quality/water-quality.module';
 import { FormResponsesModule } from './modules/form-responses/form-responses.module';
 import configuration from './config/configuration';
+import { WaterDataModule } from './modules/water-data/water-data.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import configuration from './config/configuration';
     WaterQuantityModule,
     WaterQualityModule,
     FormResponsesModule,
+    WaterDataModule
   ],
 })
 export class AppModule {}

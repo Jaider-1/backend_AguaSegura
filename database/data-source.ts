@@ -1,6 +1,7 @@
 // database/data-source.ts
 import { DataSource } from 'typeorm';
 import * as dotenv from 'dotenv';
+import { runAllSeeds } from './seeds';
 
 dotenv.config();
 
@@ -13,7 +14,7 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_DATABASE || 'aguasegura',
   
   // SOLO entidades de negocio (@Entity decorator)
-  entities: [],
+  entities: [__dirname + '/../../src/modules/recommendations/entities/recommendation-rules.entity.ts'],
   
   // No necesitamos migraciones para tablas tipo
   migrations: [],
@@ -21,3 +22,5 @@ export const AppDataSource = new DataSource({
   synchronize: false, // Importante: false
   logging: true,
 });
+
+export default runAllSeeds
