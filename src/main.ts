@@ -2,89 +2,74 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { AppDataSource } from '../database/data-source';
+import { DataSource } from 'typeorm';
 import { seedRecommendations } from '../database/seeds/recommendations.seed';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  
-  // Configuración de validación global
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-  }));
-  
-  // Configuración de CORS MÁS ESPECÍFICA
-  app.enableCors({
-    origin: [
-      'http://localhost:8081',    // Expo web
-      'exp://localhost:8081',     // Expo device
-      /\.exp\.direct$/,            // Expo tunnel
-      /\.ngrok\.io$/,              // Ngrok
-    ],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: [
-      'Content-Type', 
-      'Authorization', 
-      'Accept',
-      'X-Requested-With'
-    ],
-    credentials: true,
-  });
-  
-  // Configuración de Swagger
-  const config = new DocumentBuilder()
-    .setTitle('Aguasegura API')
-    .setDescription('API para sistema de gestión de calidad del agua')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
-  
-  await app.listen(3000);
-  console.log('🚀 Servidor ejecutándose en http://localhost:3000');
-  console.log('📚 Documentación API en http://localhost:3000/api');
-
-
-async function bootstrap() {
-  // Ejecutar migraciones antes de iniciar la app
-  console.log('📊 Conectando a la base de datos...');
+  console.log('Iniciando Aguasegura Backend...');
   
   try {
-    await AppDataSource.initialize();
-    console.log('✅ Base de datos conectada');
+    // 1. Primero crear la aplicación
+    const app = await NestFactory.create(AppModule, {
+      logger: ['log', 'error', 'warn'],
+    });
     
-    // Ejecutar migraciones pendientes
-    console.log('🔄 Ejecutando migraciones...');
-    await AppDataSource.runMigrations();
-    console.log('✅ Migraciones completadas');
+    // 2. Obtener la conexión de TypeORM
+    const dataSource = app.get(DataSource);
     
-    // Ejecutar seeds
-    console.log('🌱 Ejecutando seeds...');
-    await seedRecommendations(AppDataSource);
-    console.log('✅ Seeds completados');
+    // 3. Ejecutar seeds automáticamente (solo si no existen)
+    console.log('Verificando seeds de recomendaciones...');
+    try {
+      const existingRules = await dataSource.query(
+        'SELECT COUNT(*) as count FROM recommendation_rules'
+      );
+      
+      if (parseInt(existingRules[0].count) === 0) {
+        console.log('No hay reglas de recomendación. Ejecutando seeds...');
+        await seedRecommendations(dataSource);
+        console.log('Seeds ejecutados automáticamente');
+      } else {
+        console.log(`Ya existen ${existingRules[0].count} reglas de recomendación`);
+      }
+    } catch (seedError) {
+      console.warn(' Error en seeds (puede ser normal):', seedError);
+    }
     
-    // Iniciar aplicación NestJS
-    const app = await NestFactory.create(AppModule);
+    // 4. Configurar validación global
+    app.useGlobalPipes(new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }));
     
-    // Configuración de CORS
+    // 5. Configurar CORS
     app.enableCors({
       origin: true,
       credentials: true,
     });
     
+    // 6. Configurar Swagger
+    const config = new DocumentBuilder()
+      .setTitle('Aguasegura API')
+      .setDescription('API para sistema de gestión de calidad del agua')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api', app, document);
+    
+    // 7. Iniciar servidor
     const port = process.env.PORT || 3000;
     await app.listen(port);
-    console.log(`🚀 Servidor ejecutándose en: http://localhost:${port}`);
+    
+    console.log(`URL: http://localhost:${port}`);
+    console.log(`Swagger: http://localhost:${port}/api`);
     
   } catch (error) {
-    console.error('❌ Error al conectar con la base de datos:', error);
+    console.error('Error crítico al iniciar la aplicación:', error);
     process.exit(1);
   }
 }
 
-}
 bootstrap();

@@ -35,4 +35,13 @@ export class WaterQuantity {
 
   @Column({ nullable: true })
   userId: string;
+
+  @Column({ 
+    name: 'cantidad_porcentual', 
+    type: 'decimal', 
+    precision: 5, 
+    scale: 2,
+    nullable: true 
+  })
+  cantidadPorcentual: number; // Nuevo campo para el formato plano
 }

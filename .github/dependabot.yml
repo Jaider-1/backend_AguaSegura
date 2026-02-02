@@ -1,0 +1,16 @@
+version: 2
+updates:
+  # Actualiza dependencias de npm (NestJS, TypeScript, etc.)
+  - package-ecosystem: "npm"
+    directory: "/"              # Ubicación del package.json
+    schedule:
+      interval: "weekly"        # Opciones: daily, weekly, monthly
+    open-pull-requests-limit: 10
+    allow:
+      - dependency-type: "direct"   # Solo actualiza dependencias del proyecto
+
+  # Actualiza GitHub Actions (opcional pero recomendado)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

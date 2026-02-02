@@ -1,17 +1,19 @@
-import { Injectable, NotFoundException, Inject, forwardRef, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, FindOptionsWhere, In, Not, IsNull } from 'typeorm';
+import { Repository, Between, FindOptionsWhere, In, IsNull, SelectQueryBuilder } from 'typeorm';
 import { DataSource } from 'typeorm';
 import { Recommendation } from './entities/recommendation.entity';
 import { CreateRecommendationDto } from './dto/create-recommendation.dto';
 import { UpdateRecommendationDto } from './dto/update-recommendation.dto';
 import { FilterRecommendationsDto } from './dto/filter-recommendations.dto';
 import { RecommendationAlgorithm } from './algorithms/recommendation.algorithm';
-import { RecommendationRequestData, RecommendationStats } from '../recommendations/interfaces/recommendation.interface';
+import {
+  RecommendationRequestData,
+  RecommendationStats,
+} from '../recommendations/interfaces/recommendation.interface';
 import { UsersService } from '../users/users.service';
 import { WaterQualityService } from '../water-quality/water-quality.service';
-import { WaterQuantityService } from '../water-quantity/water-quantity.service';  
-
+import { WaterQuantityService } from '../water-quantity/water-quantity.service';
 
 @Injectable()
 export class RecommendationsService {
@@ -22,7 +24,7 @@ export class RecommendationsService {
     private recommendationAlgorithm: RecommendationAlgorithm,
     private waterQualityService: WaterQualityService,
     private waterQuantityService: WaterQuantityService,
-    private usersService: UsersService,
+    private usersService: UsersService
   ) {}
 
   // Método CREATE simplificado
@@ -36,16 +38,19 @@ export class RecommendationsService {
   }
 
   // Método para generar desde datos de calidad
-  async generateFromQualityData(data: { irca: number; measuredAt?: string }): Promise<Recommendation[]> {
+  async generateFromQualityData(data: {
+    irca: number;
+    measuredAt?: string;
+  }): Promise<Recommendation[]> {
     const requestData = {
       qualityIrc: data.irca,
       measuredAt: data.measuredAt || new Date().toISOString(),
     };
 
     const generatedRecs = await this.recommendationAlgorithm.generateRecommendations(requestData);
-    
+
     const savedRecommendations: Recommendation[] = [];
-    
+
     for (const genRec of generatedRecs) {
       const recommendation = this.recommendationsRepository.create({
         message: genRec.message,
@@ -54,25 +59,28 @@ export class RecommendationsService {
         category: genRec.category,
         parameters: genRec.parameters,
       });
-      
+
       const saved = await this.recommendationsRepository.save(recommendation);
       savedRecommendations.push(saved);
     }
-    
+
     return savedRecommendations;
   }
 
   // Método para generar desde datos de cantidad
-  async generateFromQuantityData(data: { level: number; measuredAt?: string }): Promise<Recommendation[]> {
+  async generateFromQuantityData(data: {
+    level: number;
+    measuredAt?: string;
+  }): Promise<Recommendation[]> {
     const requestData = {
       quantityPercentage: data.level,
       measuredAt: data.measuredAt || new Date().toISOString(),
     };
 
     const generatedRecs = await this.recommendationAlgorithm.generateRecommendations(requestData);
-    
+
     const savedRecommendations: Recommendation[] = [];
-    
+
     for (const genRec of generatedRecs) {
       const recommendation = this.recommendationsRepository.create({
         message: genRec.message,
@@ -81,28 +89,28 @@ export class RecommendationsService {
         category: genRec.category,
         parameters: genRec.parameters,
       });
-      
+
       const saved = await this.recommendationsRepository.save(recommendation);
       savedRecommendations.push(saved);
     }
-    
+
     return savedRecommendations;
   }
 
   // Métodos CRUD básicos...
   async findAll(filters: FilterRecommendationsDto) {
-    const where: any = {};
+    const where: FindOptionsWhere<Recommendation> = {};
     const { page = 1, limit = 10, ...filterParams } = filters;
 
     // Aplicar filtros...
     if (filterParams.priorityLevels?.length) {
       where.priorityLevel = In(filterParams.priorityLevels);
     }
-    
+
     if (filterParams.trafficLightColors?.length) {
       where.trafficLightColor = In(filterParams.trafficLightColors);
     }
-    
+
     if (filterParams.categories?.length) {
       where.category = In(filterParams.categories);
     }
@@ -113,9 +121,9 @@ export class RecommendationsService {
 
     const [recommendations, total] = await this.recommendationsRepository.findAndCount({
       where,
-      order: { 
+      order: {
         priorityLevel: 'ASC',
-        createdAt: 'DESC'
+        createdAt: 'DESC',
       },
       skip: (page - 1) * limit,
       take: limit,
@@ -132,7 +140,7 @@ export class RecommendationsService {
     };
   }
 
-  async findOne(id: string, userId?: string ): Promise<Recommendation> {
+  async findOne(id: string, userId?: string): Promise<Recommendation> {
     const recommendation = await this.recommendationsRepository.findOne({
       where: { id, ...(userId ? { userId } : {}) },
     });
@@ -168,9 +176,9 @@ export class RecommendationsService {
   async generateFromWaterQuality(qualityId: string, userId: string): Promise<Recommendation[]> {
     const qualityData = await this.waterQualityService.findOne(qualityId);
     const irca = this.recommendationAlgorithm.calculateIRCA(qualityData);
-    
+
     const user = await this.usersService.findOne(userId);
-    
+
     const requestData: RecommendationRequestData = {
       userId,
       waterQualityId: qualityId,
@@ -186,7 +194,7 @@ export class RecommendationsService {
   async generateFromWaterQuantity(quantityId: string, userId: string): Promise<Recommendation[]> {
     const quantityData = await this.waterQuantityService.findOne(quantityId);
     const user = await this.usersService.findOne(userId);
-    
+
     const requestData: RecommendationRequestData = {
       userId,
       waterQuantityId: quantityId,
@@ -201,7 +209,7 @@ export class RecommendationsService {
 
   async generateRecommendationsForUser(userId: string): Promise<Recommendation[]> {
     const user = await this.usersService.findOne(userId);
-    
+
     const requestData: RecommendationRequestData = {
       userId,
       householdSize: user.householdSize,
@@ -214,7 +222,7 @@ export class RecommendationsService {
 
   async findByUser(userId: string, filters?: FilterRecommendationsDto): Promise<Recommendation[]> {
     const where: FindOptionsWhere<Recommendation> = { userId };
-    
+
     if (filters) {
       this.applyFiltersToWhere(where, filters);
     }
@@ -222,9 +230,9 @@ export class RecommendationsService {
     return this.recommendationsRepository.find({
       where,
       relations: ['waterQuality', 'waterQuantity'],
-      order: { 
+      order: {
         priorityLevel: 'ASC',
-        createdAt: 'DESC'
+        createdAt: 'DESC',
       },
       take: filters?.limit || 50,
     });
@@ -251,7 +259,17 @@ export class RecommendationsService {
     climateConditions?: string[];
     reuseDisposition?: string;
     householdSize?: number;
-  }): Promise<any[]> {
+  }): Promise<
+    Array<{
+      message: string;
+      priorityLevel: string;
+      trafficLightColor: string;
+      category: string;
+      parameters: Record<string, unknown>;
+      generatedAt: string;
+      isForGuest: boolean;
+    }>
+  > {
     const requestData: RecommendationRequestData = {
       // No incluir userId para invitados
       quantityPercentage: data.quantityPercentage,
@@ -263,34 +281,44 @@ export class RecommendationsService {
 
     // Solo generar, no guardar en DB
     const generatedRecs = await this.recommendationAlgorithm.generateRecommendations(requestData);
-    
-    return generatedRecs.map(rec => ({
+
+    return generatedRecs.map((rec) => ({
       message: rec.message,
       priorityLevel: rec.priorityLevel,
       trafficLightColor: rec.trafficLightColor,
       category: rec.category,
       parameters: rec.parameters,
       generatedAt: new Date().toISOString(),
-      isForGuest: true // Marcar como para invitado
+      isForGuest: true, // Marcar como para invitado
     }));
   }
 
-  async simulateRecommendations(scenario: 'critical' | 'low' | 'normal' | 'quality_issue' | 'family'): Promise<{
-    recommendations: any[];
+  async simulateRecommendations(
+    scenario: 'critical' | 'low' | 'normal' | 'quality_issue' | 'family'
+  ): Promise<{
+    recommendations: Array<{
+      message: string;
+      priorityLevel: string;
+      trafficLightColor: string;
+      category: string;
+      parameters: Record<string, unknown>;
+      generatedAt: string;
+      isForGuest: boolean;
+    }>;
     scenario: string;
-    parameters: any;
+    parameters: Record<string, unknown>;
   }> {
-    let requestData: any;
-    
+    let requestData: Partial<RecommendationRequestData>;
+
     switch (scenario) {
       case 'critical':
         requestData = { quantityPercentage: 10 }; // <15%
         break;
       case 'low':
-        requestData = { 
+        requestData = {
           quantityPercentage: 25,
           climateConditions: ['Sequía'],
-          reuseDisposition: 'Dispuesto'
+          reuseDisposition: 'Dispuesto',
         };
         break;
       case 'quality_issue':
@@ -304,21 +332,40 @@ export class RecommendationsService {
     }
 
     const recommendations = await this.generateRecommendationsPublic(requestData);
-    
+
     return {
       recommendations,
       scenario,
-      parameters: requestData
+      parameters: requestData,
     };
   }
 
   // ============ MÉTODOS DE REGLAS Y ESTADÍSTICAS ============
 
+  // Método para obtener TODAS las reglas (activas e inactivas)
+  async getAllRules() {
+    await this.ensureRecommendationRulesTable();
+
+    return this.dataSource.query(`
+      SELECT * FROM recommendation 
+      ORDER BY 
+        CASE priority_level 
+          WHEN 'critical' THEN 1
+          WHEN 'high' THEN 2
+          WHEN 'medium' THEN 3
+          WHEN 'low' THEN 4
+        END,
+        is_active DESC,
+        created_at DESC
+    `);
+  }
+
+  // Método existente para obtener solo reglas activas
   async getActiveRules() {
     await this.ensureRecommendationRulesTable();
-    
+
     return this.dataSource.query(`
-      SELECT * FROM recommendation_rules 
+      SELECT * FROM recommendation 
       WHERE is_active = true 
       ORDER BY 
         CASE priority_level 
@@ -326,42 +373,43 @@ export class RecommendationsService {
           WHEN 'high' THEN 2
           WHEN 'medium' THEN 3
           WHEN 'low' THEN 4
-        END
+        END,
+        created_at DESC
     `);
   }
 
   async findRulesByCategory(category: string) {
-    const allRules = await this.getActiveRules();
-    return allRules.filter(rule => rule.category === category);
+    const allRules = await this.getAllRules();
+    return allRules.filter((rule) => rule.category === category);
   }
 
-  async updateRule(id: string, updateData: any) {
+  async updateRule(id: string, updateData: Record<string, unknown>) {
     const fields = [];
     const values = [];
-    
+
     for (const [key, value] of Object.entries(updateData)) {
       const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
       fields.push(`${dbKey} = $${fields.length + 2}`);
       values.push(value);
     }
-    
+
     if (fields.length === 0) {
       throw new Error('No hay campos para actualizar');
     }
-    
+
     const query = `
-      UPDATE recommendation_rules 
+      UPDATE recommendation
       SET ${fields.join(', ')}, updated_at = NOW()
       WHERE id = $1
       RETURNING *
     `;
-    
+
     const result = await this.dataSource.query(query, [id, ...values]);
-    
+
     if (result.length === 0) {
       throw new NotFoundException(`Regla con ID ${id} no encontrada`);
     }
-    
+
     return result[0];
   }
 
@@ -381,14 +429,14 @@ export class RecommendationsService {
 
   async getRecommendationSummary(userId?: string) {
     const stats = await this.getStats(userId);
-    
-    const whereCondition: any = {};
+
+    const whereCondition: FindOptionsWhere<Recommendation> = {};
     if (userId) {
       whereCondition.userId = userId;
     } else {
       whereCondition.userId = IsNull();
     }
-    
+
     const recentRecommendations = await this.recommendationsRepository.find({
       where: whereCondition,
       relations: ['waterQuality', 'waterQuantity'],
@@ -415,13 +463,13 @@ export class RecommendationsService {
   // ============ MÉTODOS PRIVADOS DE APOYO ============
 
   private async saveRecommendations(
-    requestData: RecommendationRequestData, 
+    requestData: RecommendationRequestData,
     relationData: { userId?: string; waterQualityId?: string; waterQuantityId?: string }
   ): Promise<Recommendation[]> {
     const generatedRecs = await this.recommendationAlgorithm.generateRecommendations(requestData);
-    
+
     const savedRecommendations: Recommendation[] = [];
-    
+
     for (const genRec of generatedRecs) {
       const recommendation = this.recommendationsRepository.create({
         message: genRec.message,
@@ -431,30 +479,30 @@ export class RecommendationsService {
         parameters: genRec.parameters,
         ...relationData,
       });
-      
+
       const saved = await this.recommendationsRepository.save(recommendation);
       savedRecommendations.push(saved);
     }
-    
+
     return savedRecommendations;
   }
 
   private applyFiltersToWhere(
-    where: FindOptionsWhere<Recommendation>, 
+    where: FindOptionsWhere<Recommendation>,
     filters: Partial<FilterRecommendationsDto>
   ): void {
     if (filters.userId) where.userId = filters.userId;
     if (filters.isRead !== undefined) where.isRead = filters.isRead;
     if (filters.isApplied !== undefined) where.isApplied = filters.isApplied;
-    
+
     if (filters.priorityLevels?.length) {
       where.priorityLevel = In(filters.priorityLevels);
     }
-    
+
     if (filters.trafficLightColors?.length) {
       where.trafficLightColor = In(filters.trafficLightColors);
     }
-    
+
     if (filters.categories?.length) {
       where.category = In(filters.categories);
     }
@@ -464,7 +512,9 @@ export class RecommendationsService {
     }
   }
 
-  private async calculateStatsFromQueryBuilder(queryBuilder: any): Promise<RecommendationStats> {
+  private async calculateStatsFromQueryBuilder(
+    queryBuilder: SelectQueryBuilder<Recommendation>
+  ): Promise<RecommendationStats> {
     const stats = await queryBuilder
       .select([
         'COUNT(rec.id) as total',
@@ -511,12 +561,10 @@ export class RecommendationsService {
 
   private async ensureRecommendationRulesTable(): Promise<void> {
     try {
-      await this.dataSource.query(`SELECT 1 FROM recommendation_rules LIMIT 1`);
-    } catch (error) {
-      console.log('📝 Creando tabla recommendation_rules...');
-      
+      await this.dataSource.query(`SELECT 1 FROM recommendation LIMIT 1`);
+    } catch {
       await this.dataSource.query(`
-        CREATE TABLE IF NOT EXISTS recommendation_rules (
+        CREATE TABLE IF NOT EXISTS recommendation (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           name VARCHAR(255) NOT NULL,
           description TEXT,
@@ -535,9 +583,26 @@ export class RecommendationsService {
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
-      
-      console.log('✅ Tabla recommendation_rules creada');
     }
   }
-      
+  async getAllRecommendationsAndRules(filters: FilterRecommendationsDto) {
+    const [recommendationsResult, allRules] = await Promise.all([
+      this.findAll(filters),
+      this.getAllRules(),
+    ]);
+
+    return {
+      generatedRecommendations: recommendationsResult.data,
+      recommendationRules: allRules,
+      meta: {
+        generated: recommendationsResult.meta,
+        rules: {
+          total: allRules.length,
+          active: allRules.filter((r) => r.is_active).length,
+          inactive: allRules.filter((r) => !r.is_active).length,
+          categories: [...new Set(allRules.map((r) => r.category))],
+        },
+      },
+    };
+  }
 }

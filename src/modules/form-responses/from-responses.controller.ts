@@ -18,12 +18,18 @@ import {
   ApiResponse, 
   ApiParam, 
   ApiQuery,
-  ApiBody,
-  ApiBearerAuth 
+  ApiBody
 } from '@nestjs/swagger';
 import { FormResponsesService } from './form-responses.service';
 import { CreateFormResponseDto } from './dto/create-form-response.dto';
 import { UpdateFormResponseDto } from './dto/update-form-response.dto';
+
+export interface UserStats {
+  userId: string;
+  totalResponses: number;
+  lastResponse?: Date;
+}
+
 
 @ApiTags('form-responses')
 @Controller('form-responses')
@@ -282,7 +288,8 @@ export class FormResponsesController {
     name: 'userId', 
     description: 'ID del usuario' 
   })
-  async getUserStats(@Param('userId') userId: string) {
-    return this.formResponsesService.getUserStats(userId);
+  async getUserStats(@Param('userId') userId: string): Promise<UserStats> {
+    const stats = await this.formResponsesService.getUserStats(userId);
+    return { userId, ...stats };
   }
 }

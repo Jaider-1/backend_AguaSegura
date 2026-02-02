@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { Repository, Between, LessThanOrEqual, MoreThanOrEqual, FindOptionsWhere } from 'typeorm';
 import { WaterQuantity } from './entities/water-quantity.entity';
 import { CreateWaterQuantityDto } from './dto/create-water-quantity.dto';
 import { UpdateWaterQuantityDto } from './dto/update-water-quantity.dto';
@@ -11,6 +11,26 @@ export class WaterQuantityService {
     @InjectRepository(WaterQuantity)
     private waterQuantityRepository: Repository<WaterQuantity>,
   ) {}
+
+
+   async createFromPlainData(plainDto: CreateWaterQuantityDto, userId?: string): Promise<WaterQuantity> {
+    // Convertir formato plano a formato interno
+    const waterQuantityData = {
+      level: plainDto.cantidad_porcentual_agua, // Mapear a level (que ya existe como porcentaje)
+      cantidadPorcentual: plainDto.cantidad_porcentual_agua, // Guardar también en nuevo campo
+      location: plainDto.location,
+      deviceId: plainDto.deviceId,
+      userId: userId || plainDto.userId,
+      // Establecer valores por defecto para otros campos requeridos
+      volume: 0, // Valor por defecto
+      flowRate: 0, // Valor por defecto
+      pressure: 0, // Valor por defecto
+      createdAt: new Date(plainDto.fecha_hora) // Usar la fecha proporcionada
+    };
+
+    const waterQuantity = this.waterQuantityRepository.create(waterQuantityData);
+    return await this.waterQuantityRepository.save(waterQuantity);
+  }
 
   async create(createWaterQuantityDto: CreateWaterQuantityDto, userId: string): Promise<WaterQuantity> {
     // Add userId to the DTO
@@ -50,7 +70,7 @@ export class WaterQuantityService {
     endDate?: Date,
     limit?: number
   ): Promise<WaterQuantity[]> {
-    const queryOptions: any = {
+    const queryOptions: { where?: FindOptionsWhere<WaterQuantity>; order: { createdAt: "DESC" | "ASC" }; take?: number } = {
       order: { createdAt: "DESC" },
     };
     // Apply date filters if provided
@@ -80,7 +100,7 @@ export class WaterQuantityService {
     endDate?: Date, 
     limit?: number
   ): Promise<WaterQuantity[]> {
-    const queryOptions: any = {
+    const queryOptions: { where: FindOptionsWhere<WaterQuantity>; order: { createdAt: "DESC" | "ASC" }; take?: number } = {
       where: { userId },
       order: { createdAt: "DESC" },
     };
@@ -149,7 +169,7 @@ export class WaterQuantityService {
     });
   }
 
-  async getStats(): Promise<any> {
+  async getStats(): Promise<{ totalRecords: number; latestRecord: WaterQuantity | null }> {
     // Example stats - customize based on your needs
     const total = await this.waterQuantityRepository.count();
     const latest = await this.getLatest();

@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+build
+*.md
+*.json
+*.yml
+*.yaml
+.gitignore
+.eslintrc.js
+.prettierrc
+.prettierignore
