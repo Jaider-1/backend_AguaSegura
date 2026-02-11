@@ -72,4 +72,5 @@ async function bootstrap() {
   }
 }
 
+}
 bootstrap();
