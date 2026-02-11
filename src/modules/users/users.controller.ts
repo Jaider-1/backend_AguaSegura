@@ -2,6 +2,8 @@
 import { Controller, Get, Param, Query, ParseUUIDPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { UsersService } from './users.service';
+import type { PaginationMeta } from './users.service';
+import { User } from './entities/user.entity';
 
 @ApiTags('users')
 @Controller('users')
@@ -13,10 +15,12 @@ export class UsersController {
   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Número de página' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Límite por página' })
   @ApiResponse({ status: 200, description: 'Lista de usuarios' })
-  async findAll(@Query('page') page: number = 1, @Query('limit') limit: number = 10) {
+  async findAll(@Query('page') page: number = 1, @Query('limit') limit: number = 10): Promise<{ success: boolean; data: User[]; meta: PaginationMeta }> {
+    const result = await this.usersService.findAll(page, limit);
     return {
       success: true,
-      data: await this.usersService.findAll(page, limit)
+      data: result.data,
+      meta: result.meta
     };
   }
 

@@ -4,6 +4,19 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 
+interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+
+
+}
+
+
+export { PaginationMeta };
+
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -11,7 +24,10 @@ export class UsersService {
     private usersRepository: Repository<User>,
   ) {}
 
-  async findAll(page: number = 1, limit: number = 10): Promise<{ data: User[]; meta: any }> {
+
+
+
+  async findAll(page: number = 1, limit: number = 10): Promise<{ data: User[]; meta: PaginationMeta }> {
     // Asegurar que page y limit sean números
     const pageNum = Number(page) || 1;
     const limitNum = Number(limit) || 10;
@@ -63,4 +79,41 @@ export class UsersService {
 
     return user;
   }
+
+  async update(id: string, updateData: Partial<User>): Promise<User> {
+    const user = await this.usersRepository.preload({
+      id,
+      ...updateData,
+    });
+    if (!user) {
+      throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
+    }
+    return this.usersRepository.save(user);
+  }
+
+  async remove(id: string): Promise<void> {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
+    }
+    await this.usersRepository.remove(user);
+  }
+
+  async UserStats(): Promise<{ totalUsers: number; activeUsers: number; inactiveUsers: number }> {
+    const totalUsers = await this.usersRepository.count();
+    const activeUsers = await this.usersRepository.count({ where: { isActive: true } });
+    const inactiveUsers = totalUsers - activeUsers;
+    return { totalUsers, activeUsers, inactiveUsers };
+  }
+
+
+
+  
+
+
+
+
+
+
+
 }

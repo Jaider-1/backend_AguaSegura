@@ -1,8 +1,8 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -24,7 +24,8 @@ export class AuthController {
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
-
+ 
+  
   @Post('guest')
   @ApiOperation({ summary: 'Iniciar como invitado' })
   @ApiResponse({ status: 200, description: 'Sesión de invitado creada' })

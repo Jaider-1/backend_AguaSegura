@@ -5,6 +5,24 @@ import { FormResponse } from './entities/form-response.entity';
 import { CreateFormResponseDto } from './dto/create-form-response.dto';
 import { UpdateFormResponseDto } from './dto/update-form-response.dto';
 
+interface UserStats {
+  totalResponses: number;
+  latestResponseDate?: Date;
+  willingness?: string;
+  averageKnowledge?: string;
+  averageMotivation?: string;
+  mostCommonMethods?: [string, number][];
+  mostCommonBarriers?: [string, number][];
+  householdInfo?: {
+    members: number;
+    housingType: string;
+    location: string;
+    avgConsumption: number;
+  };
+  message?: string;
+  count?: number;
+}
+
 @Injectable()
 export class FormResponsesService {
   constructor(
@@ -27,7 +45,7 @@ export class FormResponsesService {
 
   // ========== FIND ALL ==========
   async findAll(userId?: string): Promise<FormResponse[]> {
-    const where: any = {};
+    const where: { userId?: string } = {};
     if (userId) where.userId = userId;
     
     return this.formResponseRepository.find({ 
@@ -132,11 +150,11 @@ export class FormResponsesService {
   }
 
   // ========== STATS BY USER ==========
-  async getUserStats(userId: string): Promise<any> {
+  async getUserStats(userId: string): Promise<UserStats> {
     const responses = await this.findByUserId(userId);
     
     if (responses.length === 0) {
-      return { message: 'No hay respuestas para este usuario', count: 0 };
+      return { totalResponses: 0, message: 'No hay respuestas para este usuario', count: 0 };
     }
     
     const latest = responses[0];
@@ -146,7 +164,7 @@ export class FormResponsesService {
     const avgMotivation = responses.reduce((sum, r) => sum + r.motivationLevel, 0) / responses.length;
     
     // Métodos más comunes
-    const methodCounts = {};
+    const methodCounts: Record<string, number> = {};
     responses.forEach(r => {
       r.currentMethods.forEach(method => {
         methodCounts[method] = (methodCounts[method] || 0) + 1;
@@ -154,7 +172,7 @@ export class FormResponsesService {
     });
     
     // Barreras más comunes
-    const barrierCounts = {};
+    const barrierCounts: Record<string, number> = {};
     responses.forEach(r => {
       r.barriers.forEach(barrier => {
         barrierCounts[barrier] = (barrierCounts[barrier] || 0) + 1;

@@ -1,50 +1,24 @@
 version: '3.8'
+
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: aguasegura-db
+    container_name: aguasegura-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: aguasegura
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: jaider123
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - aguasegura-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  app:
-    build: .
-    container_name: aguasegura-backend
-    environment:
-      DATABASE_HOST: postgres
-      DATABASE_PORT: 5432
-      DATABASE_USERNAME: postgres
-      DATABASE_PASSWORD: password
-      DATABASE_NAME: aguasegura
-      JWT_SECRET: aguasegura_secret_key_2024_docker
-      NODE_ENV: development
-    ports:
-      - "3001:3000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    volumes:
-      - .:/app
-      - /app/node_modules
-    networks:
-      - aguasegura-network
-    command: npm run start:dev
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:
-
-networks:
-  aguasegura-network:
-    driver: bridge
+  

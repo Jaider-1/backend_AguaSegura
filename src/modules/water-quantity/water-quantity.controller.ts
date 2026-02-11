@@ -9,6 +9,55 @@ import { CreateWaterQuantityDto } from './dto/create-water-quantity.dto';
 export class WaterQuantityController {
   constructor(private readonly waterQuantityService: WaterQuantityService) {}
 
+
+  @Post('plain')
+  @ApiOperation({ summary: 'Crear registro desde datos planos' })
+  @ApiResponse({ status: 201, description: 'Registro creado exitosamente desde formato plano' })
+  async createFromPlain(
+    @Body() plainDto: CreateWaterQuantityDto,
+    @Query('userId') userId: string
+  ) {
+    return {
+      success: true,
+      message: 'Datos de cantidad recibidos y guardados correctamente',
+      data: await this.waterQuantityService.createFromPlainData(plainDto, userId)
+    };
+  }
+
+  // Endpoint para recepción masiva desde dispositivos IoT
+  @Post('device/batch')
+  @ApiOperation({ summary: 'Recibir datos en lote desde dispositivo IoT' })
+  @ApiResponse({ status: 201, description: 'Datos en lote procesados' })
+  async createBatchFromDevice(
+    @Body() batchData: CreateWaterQuantityDto[],
+    @Query('deviceId') deviceId: string
+  ) {
+    const results = [];
+    
+    for (const data of batchData) {
+      // Asignar deviceId si no viene en cada registro
+      if (!data.deviceId && deviceId) {
+        data.deviceId = deviceId;
+      }
+      
+      try {
+        const result = await this.waterQuantityService.createFromPlainData(data);
+        results.push({ success: true, data: result });
+      } catch (error) {
+        results.push({ success: false, error: error} );
+      }
+    }
+
+    return {
+      success: true,
+      message: `Procesados ${batchData.length} registros`,
+      processed: results.filter(r => r.success).length,
+      failed: results.filter(r => !r.success).length,
+      results
+    };
+  }
+
+
   @Post()
   @ApiOperation({ summary: 'Crear nuevo registro de cantidad de agua' })
   @ApiResponse({ status: 201, description: 'Registro creado exitosamente' })
