@@ -25,7 +25,7 @@ import { WaterDataModule } from './modules/water-data/water-data.module';
         host: configService.get('DB_HOST', 'localhost'),
         port: configService.get('DB_PORT', 5432),
         username: configService.get('DB_USERNAME', 'postgres'),
-        password: configService.get('DB_PASSWORD', 'jaider123'),
+        password: configService.get('DB_PASSWORD', 'jeyson1171'),
         database: configService.get('DB_DATABASE', 'aguasegura'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: configService.get('DB_SYNCHRONIZE', true),

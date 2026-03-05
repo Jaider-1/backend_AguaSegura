@@ -16,7 +16,7 @@ import configuration from '../../config/configuration';
     JwtModule.register({
       secret: configuration().jwt.secret,
       signOptions: { 
-        expiresIn: Number(configuration().jwt.expiresIn) 
+        expiresIn: '24h'
       },
     }),
   ],

@@ -9,7 +9,8 @@ export class RegisterDto {
   @ApiProperty({ example: '+573001234567', required: false })
   @IsOptional()
   @Matches(/^\+?[1-9]\d{1,14}$/, { 
-    message: 'El teléfono debe ser un número válido con código de país' 
+    message: 'El teléfono debe ser un número válido con código de país',
+    always: false
   })
   phone?: string;
 
