@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, LessThanOrEqual, MoreThanOrEqual, FindOptionsWhere } from 'typeorm';
+import { Repository, Between, LessThanOrEqual, MoreThanOrEqual, FindOptionsWhere, DeepPartial } from 'typeorm';
 import { WaterQuantity } from './entities/water-quantity.entity';
 import { CreateWaterQuantityDto } from './dto/create-water-quantity.dto';
 import { UpdateWaterQuantityDto } from './dto/update-water-quantity.dto';
@@ -15,18 +15,22 @@ export class WaterQuantityService {
 
    async createFromPlainData(plainDto: CreateWaterQuantityDto, userId?: string): Promise<WaterQuantity> {
     // Convertir formato plano a formato interno
-    const waterQuantityData = {
+    const waterQuantityData: DeepPartial<WaterQuantity> = {
       level: plainDto.cantidad_porcentual_agua, // Mapear a level (que ya existe como porcentaje)
       cantidadPorcentual: plainDto.cantidad_porcentual_agua, // Guardar también en nuevo campo
       location: plainDto.location,
       deviceId: plainDto.deviceId,
-      userId: userId || plainDto.userId,
       // Establecer valores por defecto para otros campos requeridos
       volume: 0, // Valor por defecto
       flowRate: 0, // Valor por defecto
       pressure: 0, // Valor por defecto
       createdAt: new Date(plainDto.fecha_hora) // Usar la fecha proporcionada
     };
+
+    // Solo agregar userId si es válido (no null, no undefined, no 'null')
+    if (userId && userId !== 'null' && userId.trim() !== '') {
+      waterQuantityData.userId = userId;
+    }
 
     const waterQuantity = this.waterQuantityRepository.create(waterQuantityData);
     return await this.waterQuantityRepository.save(waterQuantity);
@@ -164,9 +168,11 @@ export class WaterQuantityService {
 
   // NEW: Public methods for public endpoints
   async getLatest(): Promise<WaterQuantity | null> {
-    return this.waterQuantityRepository.findOne({
+    const [latest] = await this.waterQuantityRepository.find({
       order: { createdAt: "DESC" },
+      take: 1,
     });
+    return latest ?? null;
   }
 
   async getStats(): Promise<{ totalRecords: number; latestRecord: WaterQuantity | null }> {
