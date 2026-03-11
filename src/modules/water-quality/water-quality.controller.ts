@@ -168,4 +168,69 @@ export class WaterQualityController {
       };
     }
   }
+
+   @Post('calcular-irca')
+  @ApiOperation({ 
+    summary: 'Calcula el IRCA según normativa colombiana (Res. 2115/2007)',
+    description: 'Evalúa parámetros fisicoquímicos y retorna el índice de riesgo sin almacenar'
+  })
+  @ApiResponse({ status: 200, description: 'Cálculo de IRCA realizado' })
+  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  async calcularIRCA(
+    @Body() params: {
+      pH?: number;
+      turbidez?: number;
+      conductividad_electrica?: number;
+      oxigeno_disuelto?: number;
+      temperatura?: number;
+    }
+  ) {
+    // Validaciones básicas
+    if (params.pH !== undefined && (params.pH < 0 || params.pH > 14)) {
+      throw new BadRequestException('pH debe estar entre 0 y 14');
+    }
+    if (params.turbidez !== undefined && params.turbidez < 0) {
+      throw new BadRequestException('Turbidez no puede ser negativa');
+    }
+    if (params.conductividad_electrica !== undefined && params.conductividad_electrica < 0) {
+      throw new BadRequestException('Conductividad no puede ser negativa');
+    }
+    if (params.oxigeno_disuelto !== undefined && params.oxigeno_disuelto < 0) {
+      throw new BadRequestException('Oxígeno disuelto no puede ser negativo');
+    }
+
+    const resultado = await this.waterQualityService.calculateIRCAOnly(params);
+    
+    return {
+      success: true,
+      message: 'IRCA calculado exitosamente',
+      data: resultado
+    };
+  }
+
+  /**
+   * Endpoint para calcular IRCA de un registro existente
+   */
+  @Get(':id/calcular-irca')
+  @ApiOperation({ summary: 'Calcula IRCA para un registro existente por ID' })
+  @ApiResponse({ status: 200, description: 'IRCA calculado' })
+  async calcularIRCAPorId(@Param('id') id: string) {
+    const registro = await this.waterQualityService.findOne(id);
+    
+    const resultado = await this.waterQualityService.calculateIRCAOnly({
+      pH: registro.pH,
+      turbidez: registro.turbidez,
+      conductividad_electrica: registro.conductividadElectrica,
+      oxigeno_disuelto: registro.oxigenoDisuelto,
+      temperatura: registro.temperatura
+    });
+
+    return {
+      success: true,
+      data: {
+        registro_id: id,
+        ...resultado
+      }
+    };
+  }
 }

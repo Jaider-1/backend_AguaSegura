@@ -14,7 +14,6 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
       priority_level: 'critical',
       traffic_light_color: 'red',
       category: 'emergencia',
-      is_active: true,
     },
 
     // 2. ESCASEZ HÍDRICA SEGÚN DEFINICIÓN ONU (ROJO)
@@ -30,7 +29,6 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
       priority_level: 'high',
       traffic_light_color: 'red',
       category: 'escasez',
-      is_active: true,
     },
 
     // 3. AGUA NO POTABLE - CALIDAD PELIGROSA (ROJO)
@@ -45,7 +43,6 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
       priority_level: 'critical',
       traffic_light_color: 'red',
       category: 'emergencia',
-      is_active: true,
     },
 
     // 4. CALIDAD MEDIA - PRECAUCIONES EN LLUVIAS (AMARILLO)
@@ -61,7 +58,6 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
       priority_level: 'medium',
       traffic_light_color: 'yellow',
       category: 'calidad',
-      is_active: true,
     },
 
     // 5. REUSO SEGURO PARA ACTIVIDADES NO POTABLES (AMARILLO)
@@ -77,7 +73,6 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
       priority_level: 'medium',
       traffic_light_color: 'yellow',
       category: 'reuso',
-      is_active: true,
     },
 
     // 6. GESTIÓN PARA HOGARES GRANDES (AMARILLO)
@@ -92,7 +87,6 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
       priority_level: 'medium',
       traffic_light_color: 'yellow',
       category: 'hogar',
-      is_active: true,
     },
 
     // 7. CALIDAD ACEPTABLE CON TRATAMIENTO (AMARILLO)
@@ -107,7 +101,6 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
       priority_level: 'high',
       traffic_light_color: 'yellow',
       category: 'calidad',
-      is_active: true,
     },
 
     // 8. CONDICIONES ÓPTIMAS - SOSTENIBILIDAD (AZUL)
@@ -122,7 +115,6 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
       priority_level: 'low',
       traffic_light_color: 'blue',
       category: 'óptimo',
-      is_active: true,
     },
 
     // 9. CONSERVACIÓN SOSTENIBLE - MANTENIMIENTO (AZUL)
@@ -137,126 +129,43 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
       priority_level: 'low',
       traffic_light_color: 'blue',
       category: 'conservación',
-      is_active: true,
-    }
+    },
   ];
 
-  console.log('🌱 Sembrando reglas de recomendación actualizadas según estándares ONU/OMS...');
-
-  // Verificar si la tabla existe
-  const tableExists = await dataSource.query(`
-    SELECT EXISTS (
-      SELECT FROM information_schema.tables 
-      WHERE table_schema = 'public' 
-      AND table_name = 'recommendation'
+  const insertQuery = `
+    INSERT INTO recommendation (
+      name,
+      description,
+      min_quantity_percentage,
+      max_quantity_percentage,
+      min_quality_irc,
+      max_quality_irc,
+      climate_conditions,
+      reuse_dispositions,
+      recommendation_text,
+      priority_level,
+      traffic_light_color,
+      category
+    ) VALUES (
+      $1, $2, $3, $4, $5, $6,
+      $7, $8, $9, $10, $11, $12
     )
-  `);
+  `;
 
-  if (!tableExists[0].exists) {
-    console.log('⚠️  La tabla recommendation no existe. Creándola...');
-    
-    // Crear tabla
-    await dataSource.query(`
-      CREATE TABLE recommendation (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        name VARCHAR(255) NOT NULL,
-        description TEXT,
-        min_quantity_percentage DECIMAL(5,2),
-        max_quantity_percentage DECIMAL(5,2),
-        min_quality_irc DECIMAL(5,2),
-        max_quality_irc DECIMAL(5,2),
-        climate_conditions TEXT[],
-        reuse_dispositions TEXT[],
-        recommendation_text TEXT NOT NULL,
-        priority_level VARCHAR(20) NOT NULL CHECK (priority_level IN ('low', 'medium', 'high', 'critical')),
-        traffic_light_color VARCHAR(10) NOT NULL CHECK (traffic_light_color IN ('green', 'yellow', 'red', 'blue')),
-        category VARCHAR(50) NOT NULL,
-        is_active BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Crear índices
-    await dataSource.query(`CREATE INDEX idx_rules_category ON recommendation(category)`);
-    await dataSource.query(`CREATE INDEX idx_rules_priority ON recommendation(priority_level)`);
-    await dataSource.query(`CREATE INDEX idx_rules_active ON recommendation(is_active)`);
-    await dataSource.query(`CREATE INDEX idx_rules_quantity ON recommendation(min_quantity_percentage, max_quantity_percentage)`);
-    await dataSource.query(`CREATE INDEX idx_rules_quality ON recommendation(min_quality_irc, max_quality_irc)`);
-    
-    console.log('✅ Tabla recommendation creada');
+  for (const rule of rules) {
+    await dataSource.query(insertQuery, [
+      rule.name,
+      rule.description,
+      rule.min_quantity_percentage ?? null,
+      rule.max_quantity_percentage ?? null,
+      rule.min_quality_irc ?? null,
+      rule.max_quality_irc ?? null,
+      rule.climate_conditions ?? null,
+      rule.reuse_dispositions ?? null,
+      rule.recommendation_text,
+      rule.priority_level,
+      rule.traffic_light_color,
+      rule.category,
+    ]);
   }
-
-  // Insertar o actualizar reglas
-  for (const ruleData of rules) {
-    // Verificar si la regla ya existe
-    const existingRule = await dataSource.query(
-      `SELECT id FROM recommendation WHERE name = $1`,
-      [ruleData.name]
-    );
-
-    if (existingRule.length === 0) {
-      // Insertar nueva regla
-      await dataSource.query(`
-        INSERT INTO recommendation (
-          name, description, min_quantity_percentage, max_quantity_percentage,
-          min_quality_irc, max_quality_irc, climate_conditions, reuse_dispositions,
-          recommendation_text, priority_level, traffic_light_color, category, is_active
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-      `, [
-        ruleData.name,
-        ruleData.description,
-        ruleData.min_quantity_percentage,
-        ruleData.max_quantity_percentage,
-        ruleData.min_quality_irc || null,
-        ruleData.max_quality_irc || null,
-        ruleData.climate_conditions ? `{${ruleData.climate_conditions.map(c => `"${c}"`).join(',')}}` : null,
-        ruleData.reuse_dispositions ? `{${ruleData.reuse_dispositions.map(c => `"${c}"`).join(',')}}` : null,
-        ruleData.recommendation_text,
-        ruleData.priority_level,
-        ruleData.traffic_light_color,
-        ruleData.category,
-        ruleData.is_active
-      ]);
-
-      console.log(`✅ Regla creada: ${ruleData.name}`);
-    } else {
-      // Actualizar regla existente
-      await dataSource.query(`
-        UPDATE recommendation SET
-          description = $2,
-          min_quantity_percentage = $3,
-          max_quantity_percentage = $4,
-          min_quality_irc = $5,
-          max_quality_irc = $6,
-          climate_conditions = $7,
-          reuse_dispositions = $8,
-          recommendation_text = $9,
-          priority_level = $10,
-          traffic_light_color = $11,
-          category = $12,
-          is_active = $13,
-          updated_at = CURRENT_TIMESTAMP
-        WHERE name = $1
-      `, [
-        ruleData.name,
-        ruleData.description,
-        ruleData.min_quantity_percentage,
-        ruleData.max_quantity_percentage,
-        ruleData.min_quality_irc || null,
-        ruleData.max_quality_irc || null,
-        ruleData.climate_conditions ? `{${ruleData.climate_conditions.map(c => `"${c}"`).join(',')}}` : null,
-        ruleData.reuse_dispositions ? `{${ruleData.reuse_dispositions.map(c => `"${c}"`).join(',')}}` : null,
-        ruleData.recommendation_text,
-        ruleData.priority_level,
-        ruleData.traffic_light_color,
-        ruleData.category,
-        ruleData.is_active
-      ]);
-      
-      console.log(`🔄 Regla actualizada: ${ruleData.name}`);
-    }
-  }
-
-  console.log('🎉 9 reglas de recomendación sembradas/actualizadas exitosamente');
 }

@@ -23,9 +23,6 @@ export class RecommendationResponseDto {
   @ApiProperty({ description: 'Indica si fue leída' })
   leida: boolean;
 
-  @ApiProperty({ description: 'Indica si está activa' })
-  is_active: boolean;
-
   @ApiProperty({ description: 'Fecha de aplicación', required: false })
   fecha_aplicacion?: Date;
 

@@ -22,7 +22,10 @@ export class WaterDataService {
   ) {}
 
   // Procesar un solo registro
-  async processWaterData(createDto: CreateWaterDataDto): Promise<WaterDataResponseDto> {
+  async processWaterData(
+    createDto: CreateWaterDataDto,
+    generateRecommendations: boolean = true,
+  ): Promise<WaterDataResponseDto> {
     try {
       this.logger.log(`Procesando datos: ${createDto.fecha_hora}`);
       
@@ -33,17 +36,19 @@ export class WaterDataService {
       const waterQuantity = await this.createWaterQuantity(createDto, irca);
       const waterQuality = await this.createWaterQuality(createDto, irca);
       
-      // Generar recomendación
+      // Generar recomendación (opcional)
       let recommendationId: string | undefined;
-      try {
-        const recommendation = await this.recommendationsService.generateFromQuantityData({
-          level: createDto.cantidad_porcentual_agua,
-          measuredAt: createDto.fecha_hora,
-        });
-        
-        recommendationId = Array.isArray(recommendation) && recommendation.length > 0 ? recommendation[0].id : undefined;
-      } catch (recError) {
-        this.logger.warn(`No se pudo generar recomendación: ${recError instanceof Error ? recError.message : String(recError)}`);
+      if (generateRecommendations) {
+        try {
+          const recommendation = await this.recommendationsService.generateFromQuantityData({
+            level: createDto.cantidad_porcentual_agua,
+            measuredAt: createDto.fecha_hora,
+          });
+          
+          recommendationId = Array.isArray(recommendation) && recommendation.length > 0 ? recommendation[0].id : undefined;
+        } catch (recError) {
+          this.logger.warn(`No se pudo generar recomendación: ${recError instanceof Error ? recError.message : String(recError)}`);
+        }
       }
 
       return {
@@ -120,8 +125,8 @@ export class WaterDataService {
             user_id: userId,
           };
 
-          // Procesar registro
-          await this.processWaterData(createDto);
+          // Procesar registro (sin recomendaciones)
+          await this.processWaterData(createDto, false);
           processed++;
           
         } catch (error) {
