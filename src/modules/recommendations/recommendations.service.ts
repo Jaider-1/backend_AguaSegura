@@ -176,7 +176,7 @@ export class RecommendationsService {
   // ============ MÉTODOS PARA USUARIOS REGISTRADOS ============
 
   async generateFromWaterQuality(qualityId: string, userId: string): Promise<Recommendation[]> {
-    const qualityData = await this.waterQualityService.findOne(qualityId);
+    const qualityData = await this.waterQualityService.findAll(qualityId);
     const irca = this.recommendationAlgorithm.calculateIRCA(qualityData);
 
     const user = await this.usersService.findOne(userId);
