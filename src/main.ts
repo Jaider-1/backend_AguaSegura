@@ -2,53 +2,66 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { DataSource } from 'typeorm';
-import { seedRecommendations } from '../database/seeds/recommendations.seed';
+import { Client } from 'pg';
+import * as dotenv from 'dotenv';
 
-async function bootstrap() {
-  console.log('Iniciando Aguasegura Backend...');
+dotenv.config();
+
+async function ensureDatabaseExists() {
+  const dbName = process.env.DB_DATABASE || 'aguasegura';
+  const config = {
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432'),
+    user: process.env.DB_USERNAME || 'postgres',
+    password: process.env.DB_PASSWORD || 'postgres',
+    database: 'postgres', // Conectar a postgres default primero
+  };
+
+  const client = new Client(config);
   
   try {
-    // 1. Primero crear la aplicación
+    await client.connect();
+    const result = await client.query(
+      'SELECT 1 FROM pg_database WHERE datname = $1',
+      [dbName]
+    );
+
+    if (result.rows.length === 0) {
+      await client.query(`CREATE DATABASE "${dbName}"`);
+    } 
+  } catch (error) {
+    
+    throw error;
+  } finally {
+    await client.end();
+  }
+}
+
+async function bootstrap() {
+  
+  try {
+    // 1. Primero asegurar que la base de datos existe
+    await ensureDatabaseExists();
+    
+    // 2. Crear la aplicación
     const app = await NestFactory.create(AppModule, {
-      logger: ['log', 'error', 'warn'],
+      logger: ['log', 'error', 'warn', 'debug'],
     });
     
-    // 2. Obtener la conexión de TypeORM
-    const dataSource = app.get(DataSource);
-    
-    // 3. Ejecutar seeds automáticamente (solo si no existen)
-    console.log('Verificando seeds de recomendaciones...');
-    try {
-      const existingRules = await dataSource.query(
-        'SELECT COUNT(*) as count FROM recommendation_rules'
-      );
-      
-      if (parseInt(existingRules[0].count) === 0) {
-        console.log('No hay reglas de recomendación. Ejecutando seeds...');
-        await seedRecommendations(dataSource);
-        console.log('Seeds ejecutados automáticamente');
-      } else {
-        console.log(`Ya existen ${existingRules[0].count} reglas de recomendación`);
-      }
-    } catch (seedError) {
-      console.warn(' Error en seeds (puede ser normal):', seedError);
-    }
-    
-    // 4. Configurar validación global
+    // 3. Configurar validación global
     app.useGlobalPipes(new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
     }));
     
-    // 5. Configurar CORS
+    // 4. Configurar CORS
     app.enableCors({
-      origin: true,
+      origin: process.env.CORS_ORIGIN?.split(',') || true,
       credentials: true,
     });
     
-    // 6. Configurar Swagger
+    // 5. Configurar Swagger
     const config = new DocumentBuilder()
       .setTitle('Aguasegura API')
       .setDescription('API para sistema de gestión de calidad del agua')
@@ -59,15 +72,15 @@ async function bootstrap() {
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api', app, document);
     
-    // 7. Iniciar servidor
+    // 6. Iniciar servidor
     const port = process.env.PORT || 3000;
     await app.listen(port);
     
-    console.log(`URL: http://localhost:${port}`);
-    console.log(`Swagger: http://localhost:${port}/api`);
+    console.log(`✅ URL: http://localhost:${port}`);
+    console.log(`📚 Swagger: http://localhost:${port}/api`);
     
   } catch (error) {
-    console.error('Error crítico al iniciar la aplicación:', error);
+    console.error('❌ Error crítico al iniciar la aplicación:', error);
     process.exit(1);
   }
 }

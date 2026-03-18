@@ -18,17 +18,17 @@ export class DatabaseInitService implements OnModuleInit {
         SELECT EXISTS (
           SELECT FROM information_schema.tables 
           WHERE table_schema = 'public' 
-          AND table_name = 'recommendation_rules'
+          AND table_name = 'recommendation'
         )
       `);
 
       if (!tableExists[0].exists) {
-        this.logger.warn('⚠️  Tabla tipo "recommendation_rules" no existe');
+        this.logger.warn('⚠️  Tabla tipo "recommendation" no existe');
         this.logger.warn('💡 Ejecuta: npm run seed:run para crear la tabla y datos');
       } else {
         // Verificar si tiene datos
         const count = await this.dataSource.query(
-          `SELECT COUNT(*) as count FROM recommendation_rules`
+          `SELECT COUNT(*) as count FROM recommendation`
         );
         this.logger.log(`✅ Tabla tipo existe con ${count[0].count} reglas`);
       }

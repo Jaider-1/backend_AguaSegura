@@ -1,8 +1,42 @@
 // src/modules/water-quality/water-quality.controller.ts
-import { Controller, Get, Post, Body, Param, Query, BadRequestException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Param, Query, BadRequestException, UploadedFile, UseInterceptors, Headers } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody, ApiHeader, ApiQuery } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Express } from 'express';
 import { WaterQualityService } from './water-quality.service';
 import { CreateWaterQualityDto } from './dto/create-water-quality.dto';
+import { CsvUploadResponseDto } from './dto/water-quality-upload.dto';
+import { WaterQuality } from './entities/water-quality.entity';
+
+// Transformador para respuestas API - VERSIÓN CORREGIDA
+const toWaterDataView = (record: WaterQuality) => {
+  // Log para debugging
+  console.log('Transformando registro:', {
+    id: record.id,
+    calidad: record.calidad,
+    calidadCategoria: record.calidadCategoria,
+    calidadColor: record.calidadColor
+  });
+
+  return {
+    id: record.id,
+    fecha_hora: record.measuredAt,
+    // Parámetros crudos
+    ph: record.ph,
+    temperatura: record.temperature,
+    turbidez: record.turbidity,
+    conductividad: record.conductivity,
+    oxigeno: record.dissolvedOxygen,
+    // LO QUE IMPORTANTE PARA EL FRONTEND - VALORES POR DEFECTO
+    calidad: record.calidad ?? 0,           // Si es null/undefined, envía 0
+    categoria: record.calidadCategoria || 'sin riesgo',
+    color: record.calidadColor || 'green',
+    // Metadata
+    deviceId: record.deviceId,
+    userId: record.userId,
+    createdAt: record.createdAt
+  };
+};
 
 @ApiTags('water-quality')
 @Controller('water-quality')
@@ -10,162 +44,137 @@ export class WaterQualityController {
   constructor(private readonly waterQualityService: WaterQualityService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Crear nuevo registro de calidad de agua' })
-  @ApiResponse({ status: 201, description: 'Registro creado exitosamente' })
-  async create(@Body() createDto: CreateWaterQualityDto) {
+  @ApiOperation({ summary: 'Crear nuevo registro' })
+  @ApiHeader({ name: 'x-user-id', required: false })
+  async create(
+    @Body() createDto: CreateWaterQualityDto,
+    @Headers('x-user-id') headerUserId?: string,
+  ) {
+    const userId = headerUserId || createDto.userId;
+    const created = await this.waterQualityService.create(createDto, userId);
+    
     return {
       success: true,
-      data: await this.waterQualityService.create(createDto)
+      data: toWaterDataView(created),
+      message: 'Registro creado exitosamente'
     };
   }
 
   @Get()
-  @ApiOperation({ summary: 'Obtener historial de calidad de agua' })
-  @ApiResponse({ status: 200, description: 'Lista de registros' })
+  @ApiOperation({ summary: 'Obtener historial' })
+  @ApiQuery({ name: 'userId', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'offset', required: false })
+  @ApiHeader({ name: 'x-user-id', required: false })
   async findAll(
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
+    @Query('userId') userId?: string,
     @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Headers('x-user-id') headerUserId?: string,
   ) {
-    const start = startDate ? new Date(startDate) : undefined;
-    const end = endDate ? new Date(endDate) : undefined;
+    const effectiveUserId = userId || headerUserId;
+    const parsedLimit = limit ? parseInt(limit, 10) : 50;
+    const parsedOffset = offset ? parseInt(offset, 10) : 0;
 
-    if (start && isNaN(start.getTime())) {
-      throw new BadRequestException('startDate inválida');
-    }
-    if (end && isNaN(end.getTime())) {
-      throw new BadRequestException('endDate inválida');
-    }
-
-    const parsedLimit = limit ? parseInt(limit, 10) : undefined;
-    if (limit && isNaN(parsedLimit)) {
-      throw new BadRequestException('limit inválido');
-    }
+    const data = await this.waterQualityService.findAll(
+      effectiveUserId, 
+      undefined, 
+      undefined, 
+      parsedLimit,
+      parsedOffset
+    );
 
     return {
       success: true,
-      data: await this.waterQualityService.findAll(undefined, start, end, parsedLimit)
+      data: data.map(toWaterDataView),
+      total: data.length,
+      limit: parsedLimit,
+      offset: parsedOffset
     };
   }
 
   @Get('latest')
-  @ApiOperation({ summary: 'Obtener el último registro de calidad' })
-  @ApiResponse({ status: 200, description: 'Último registro' })
-  async getLatest() {
+  @ApiOperation({ summary: 'Obtener el último registro' })
+  @ApiQuery({ name: 'userId', required: false })
+  @ApiHeader({ name: 'x-user-id', required: false })
+  async getLatest(
+    @Query('userId') userId?: string,
+    @Headers('x-user-id') headerUserId?: string,
+  ) {
+    const effectiveUserId = userId || headerUserId;
+    const latest = await this.waterQualityService.getLatest(effectiveUserId);
+    
+    // Log para debugging
+    console.log('Enviando último registro:', {
+      id: latest.id,
+      calidad: latest.calidad,
+      categoria: latest.calidadCategoria
+    });
+
     return {
       success: true,
-      data: await this.waterQualityService.getLatest()
+      data: toWaterDataView(latest)
     };
   }
 
   @Get('stats')
-  @ApiOperation({ summary: 'Obtener estadísticas de calidad' })
-  @ApiResponse({ status: 200, description: 'Estadísticas' })
-  async getStats() {
+  @ApiOperation({ summary: 'Obtener estadísticas' })
+  @ApiQuery({ name: 'userId', required: false })
+  @ApiHeader({ name: 'x-user-id', required: false })
+  async getStats(
+    @Query('userId') userId?: string,
+    @Headers('x-user-id') headerUserId?: string,
+  ) {
+    const effectiveUserId = userId || headerUserId;
+    const stats = await this.waterQualityService.getStats(effectiveUserId);
+    
     return {
       success: true,
-      data: await this.waterQualityService.getStats()
+      data: stats
     };
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener registro por ID' })
-  @ApiResponse({ status: 200, description: 'Registro encontrado' })
-  @ApiResponse({ status: 404, description: 'Registro no encontrado' })
   async findOne(@Param('id') id: string) {
-    return {
-      success: true,
-      data: await this.waterQualityService.findOne(id)
-    };
-  }
-
-  @Post('plain')
-  @ApiOperation({ summary: 'Crear registro desde datos planos de calidad' })
-  @ApiResponse({ status: 201, description: 'Registro de calidad creado desde formato plano' })
-  async createFromPlain(
-    @Body() plainDto: CreateWaterQualityDto,
-    @Query('userId') userId: string
-  ) {
-    return {
-      success: true,
-      message: 'Datos de calidad recibidos y guardados correctamente',
-      data: await this.waterQualityService.createFromPlainData(plainDto, userId)
-    };
-  }
-
-  // Endpoint para recepción masiva desde sensores
-  @Post('sensor/batch')
-  @ApiOperation({ summary: 'Recibir datos en lote desde sensores IoT' })
-  @ApiResponse({ status: 201, description: 'Datos de sensores procesados' })
-  async createBatchFromSensor(
-    @Body() batchData: CreateWaterQualityDto[],
-    @Query('deviceId') deviceId: string
-  ) {
-    const results = [];
+    const record = await this.waterQualityService.findOne(id);
     
-    for (const data of batchData) {
-      // Asignar deviceId si no viene en cada registro
-      if (!data.deviceId && deviceId) {
-        data.deviceId = deviceId;
-      }
-      
-      try {
-        const result = await this.waterQualityService.createFromPlainData(data);
-        results.push({ success: true, data: result });
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        results.push({ success: false, error: errorMessage });
-      }
-    }
-
     return {
       success: true,
-      message: `Procesados ${batchData.length} registros de calidad`,
-      processed: results.filter(r => r.success).length,
-      failed: results.filter(r => !r.success).length,
-      results
+      data: toWaterDataView(record)
     };
   }
 
-  // Endpoint simple para IoT (sin autenticación)
-  @Post('sensor')
-  @ApiOperation({ summary: 'Endpoint simple para sensores IoT' })
-  async receiveFromSensor(
-    @Body() sensorData: {
-      fecha_hora: string;
-      pH?: number;
-      temperatura?: number;
-      turbidez?: number;
-      conductividad_electrica?: number;
-      oxigeno_disuelto?: number;
-      deviceId: string;
-    }
-  ) {
-    // Validar deviceId mínimo
-    if (!sensorData.deviceId) {
-      return {
-        success: false,
-        error: 'Se requiere deviceId'
-      };
+  @Post('upload/csv')
+  @ApiOperation({ summary: 'Subir archivo CSV' })
+  @ApiConsumes('multipart/form-data')
+  @ApiHeader({ name: 'x-user-id', required: false })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        deviceId: { type: 'string' },
+      },
+    },
+  })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadCsv(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('deviceId') bodyDeviceId?: string,
+    @Headers('x-user-id') headerUserId?: string,
+  ): Promise<CsvUploadResponseDto> {
+    if (!file) {
+      throw new BadRequestException('No se proporcionó archivo');
     }
 
-    try {
-      const result = await this.waterQualityService.createFromPlainData(sensorData);
-      return {
-        success: true,
-        message: 'Datos recibidos',
-        timestamp: new Date().toISOString(),
-        data: {
-          id: result.id,
-          measuredAt: result.measuredAt
-        }
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      return {
-        success: false,
-        error: errorMessage
-      };
-    }
+    const csvDeviceId = bodyDeviceId || 'csv-upload';
+    return await this.waterQualityService.processCsvFile(file.buffer, headerUserId || null, csvDeviceId);
+  }
+
+  @Post('calculate')
+  @ApiOperation({ summary: 'Calcular calidad sin guardar' })
+  async calculateCalidad(@Body() params: any) {
+    return await this.waterQualityService.calculateOnly(params);
   }
 }

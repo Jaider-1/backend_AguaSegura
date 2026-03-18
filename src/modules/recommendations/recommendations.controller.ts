@@ -11,14 +11,14 @@ import {
   HttpStatus,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { RecommendationsService } from './recommendations.service';
 import { CreateRecommendationDto } from './dto/create-recommendation.dto';
 import { UpdateRecommendationDto } from './dto/update-recommendation.dto';
 import { FilterRecommendationsDto } from './dto/filter-recommendations.dto';
 
-@ApiTags('recommendations')
-@Controller('recommendations')
+@ApiTags('recommendation')
+@Controller('recommendation')
 export class RecommendationsController {
   constructor(private readonly recommendationsService: RecommendationsService) {}
 
@@ -56,8 +56,8 @@ export class RecommendationsController {
           },
           rules: {
             total: allRules.length,
-            active: allRules.filter((r) => r.is_active).length,
-            inactive: allRules.filter((r) => !r.is_active).length,
+            active: allRules.length,
+            inactive: 0,
             categories: [...new Set(allRules.map((r) => r.category))],
           },
         },
@@ -71,38 +71,22 @@ export class RecommendationsController {
   @ApiOperation({
     summary: 'Obtener reglas de recomendación',
     description:
-      'Obtiene todas las reglas de recomendación. Usa el parámetro "active" para filtrar.',
+      'Obtiene todas las reglas de recomendación.',
   })
-  @ApiQuery({
-    name: 'active',
-    required: false,
-    description: 'Filtrar por estado de la regla (true=activas, false=inactivas)',
-    type: String,
-    example: 'true',
-  })
-  @ApiResponse({
+    @ApiResponse({
     status: HttpStatus.OK,
     description: 'Lista de reglas de recomendación',
   })
-  async getRules(@Query('active') active?: string) {
-    let rules;
-
-    if (active === 'true') {
-      rules = await this.recommendationsService.getActiveRules();
-    } else if (active === 'false') {
-      const allRules = await this.recommendationsService.getAllRules();
-      rules = allRules.filter((rule) => rule.is_active === false);
-    } else {
-      rules = await this.recommendationsService.getAllRules();
-    }
+  async getRules() {
+    const rules = await this.recommendationsService.getAllRules();
 
     return {
       success: true,
       data: rules,
       meta: {
         total: rules.length,
-        activeCount: rules.filter((r) => r.is_active).length,
-        inactiveCount: rules.filter((r) => !r.is_active).length,
+        activeCount: rules.length,
+        inactiveCount: 0,
       },
     };
   }
@@ -121,8 +105,8 @@ export class RecommendationsController {
       data: rules,
       meta: {
         total: rules.length,
-        activeCount: rules.filter((r) => r.is_active).length,
-        inactiveCount: rules.filter((r) => !r.is_active).length,
+        activeCount: rules.length,
+        inactiveCount: 0,
       },
     };
   }
@@ -152,24 +136,14 @@ export class RecommendationsController {
     description: 'Categoría de las reglas',
     type: String,
   })
-  @ApiQuery({
-    name: 'active',
-    required: false,
-    description: 'Filtrar por estado de la regla',
-    type: String,
-  })
-  @ApiResponse({
+    @ApiResponse({
     status: HttpStatus.OK,
     description: 'Lista de reglas filtradas por categoría',
   })
-  async getRulesByCategory(@Param('category') category: string, @Query('active') active?: string) {
+  async getRulesByCategory(@Param('category') category: string) {
     let rules = await this.recommendationsService.findRulesByCategory(category);
 
-    if (active === 'true') {
-      rules = rules.filter((rule) => rule.is_active === true);
-    } else if (active === 'false') {
-      rules = rules.filter((rule) => rule.is_active === false);
-    }
+    // Sin filtro por activo/inactivo (columna eliminada)
 
     return {
       success: true,
@@ -177,8 +151,8 @@ export class RecommendationsController {
       meta: {
         category,
         total: rules.length,
-        activeCount: rules.filter((r) => r.is_active).length,
-        inactiveCount: rules.filter((r) => !r.is_active).length,
+        activeCount: rules.length,
+        inactiveCount: 0,
       },
     };
   }
@@ -335,3 +309,5 @@ export class RecommendationsController {
     };
   }
 }
+
+

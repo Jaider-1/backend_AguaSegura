@@ -1,26 +1,33 @@
-// database/data-source.ts
 import { DataSource } from 'typeorm';
 import * as dotenv from 'dotenv';
-import { runAllSeeds } from './seeds';
 
 dotenv.config();
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  username: process.env.DB_USERNAME || 'postgres',
-  password: process.env.DB_PASSWORD || 'jaider123',
-  database: process.env.DB_DATABASE || 'aguasegura',
+  host:
+    process.env.DB_HOST ||
+    process.env.DATABASE_HOST ||
+    '127.0.0.1',
+  port: parseInt(
+    process.env.DB_PORT || process.env.DATABASE_PORT || '5432',
+    10,
+  ),
+  username:
+    process.env.DB_USERNAME ||
+    process.env.DATABASE_USERNAME ||
+    'postgres',
+  password:
+    process.env.DB_PASSWORD ||
+    process.env.DATABASE_PASSWORD ||
+    'postgres',
+  database:
+    process.env.DB_DATABASE ||
+    process.env.DATABASE_NAME ||
+    'aguasegura',
   
-  // SOLO entidades de negocio (@Entity decorator)
-  entities: [__dirname + '/../../src/modules/recommendations/entities/recommendation-rules.entity.ts'],
-  
-  // No necesitamos migraciones para tablas tipo
-  migrations: [],
-  
-  synchronize: false, // Importante: false
-  logging: true,
+  entities: [__dirname + '/../../src/**/*.entity{.ts,.js}'],
+  migrations: [__dirname + '/migrations/*{.ts,.js}'],
+  synchronize: process.env.NODE_ENV === 'development', // Solo para desarrollo
+  logging: process.env.NODE_ENV === 'development',
 });
-
-export default runAllSeeds

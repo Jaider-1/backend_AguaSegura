@@ -14,6 +14,7 @@ import {
 import { UsersService } from '../users/users.service';
 import { WaterQualityService } from '../water-quality/water-quality.service';
 import { WaterQuantityService } from '../water-quantity/water-quantity.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class RecommendationsService {
@@ -24,7 +25,8 @@ export class RecommendationsService {
     private recommendationAlgorithm: RecommendationAlgorithm,
     private waterQualityService: WaterQualityService,
     private waterQuantityService: WaterQuantityService,
-    private usersService: UsersService
+    private usersService: UsersService,
+    private configService: ConfigService
   ) {}
 
   // Método CREATE simplificado
@@ -174,7 +176,7 @@ export class RecommendationsService {
   // ============ MÉTODOS PARA USUARIOS REGISTRADOS ============
 
   async generateFromWaterQuality(qualityId: string, userId: string): Promise<Recommendation[]> {
-    const qualityData = await this.waterQualityService.findOne(qualityId);
+    const qualityData = await this.waterQualityService.findAll(qualityId);
     const irca = this.recommendationAlgorithm.calculateIRCA(qualityData);
 
     const user = await this.usersService.findOne(userId);
@@ -355,7 +357,6 @@ export class RecommendationsService {
           WHEN 'medium' THEN 3
           WHEN 'low' THEN 4
         END,
-        is_active DESC,
         created_at DESC
     `);
   }
@@ -366,7 +367,7 @@ export class RecommendationsService {
 
     return this.dataSource.query(`
       SELECT * FROM recommendation 
-      WHERE is_active = true 
+      WHERE true 
       ORDER BY 
         CASE priority_level 
           WHEN 'critical' THEN 1
@@ -566,7 +567,9 @@ export class RecommendationsService {
       await this.dataSource.query(`
         CREATE TABLE IF NOT EXISTS recommendation (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          name VARCHAR(255) NOT NULL,
+
+          -- Campos para reglas (opcionales)
+          name VARCHAR(255),
           description TEXT,
           min_quantity_percentage DECIMAL(5,2),
           max_quantity_percentage DECIMAL(5,2),
@@ -574,16 +577,44 @@ export class RecommendationsService {
           max_quality_irc DECIMAL(5,2),
           climate_conditions TEXT[],
           reuse_dispositions TEXT[],
+
+          -- Campos compartidos por reglas y recomendaciones generadas
           recommendation_text TEXT NOT NULL,
           priority_level VARCHAR(20) NOT NULL CHECK (priority_level IN ('low', 'medium', 'high', 'critical')),
           traffic_light_color VARCHAR(10) NOT NULL CHECK (traffic_light_color IN ('green', 'yellow', 'red')),
           category VARCHAR(50) NOT NULL,
-          is_active BOOLEAN DEFAULT TRUE,
+
+          -- Campos para recomendaciones generadas
+          parameters JSONB,
+          is_read BOOLEAN DEFAULT FALSE,
+          is_applied BOOLEAN DEFAULT FALSE,
+          applied_at TIMESTAMP,
+          expires_at TIMESTAMP,
+          user_id UUID,
+          water_quality_id UUID,
+          water_quantity_id UUID,
+
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
     }
+
+    // Asegurar columnas para recomendaciones generadas (y compatibilidad)
+    await this.dataSource.query(`
+      ALTER TABLE recommendation
+        ALTER COLUMN name DROP NOT NULL;
+
+      ALTER TABLE recommendation
+        ADD COLUMN IF NOT EXISTS parameters JSONB,
+        ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS is_applied BOOLEAN DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS applied_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS user_id UUID,
+        ADD COLUMN IF NOT EXISTS water_quality_id UUID,
+        ADD COLUMN IF NOT EXISTS water_quantity_id UUID;
+    `);
   }
   async getAllRecommendationsAndRules(filters: FilterRecommendationsDto) {
     const [recommendationsResult, allRules] = await Promise.all([
@@ -598,11 +629,58 @@ export class RecommendationsService {
         generated: recommendationsResult.meta,
         rules: {
           total: allRules.length,
-          active: allRules.filter((r) => r.is_active).length,
-          inactive: allRules.filter((r) => !r.is_active).length,
+          active: allRules.length,
+          inactive: 0,
           categories: [...new Set(allRules.map((r) => r.category))],
         },
       },
     };
   }
+
+
+
+   async onApplicationBootstrap() {
+    // Ejecutar seeds
+    const shouldRunSeeds = this.configService.get('RUN_SEEDS') !== 'false';
+      if (shouldRunSeeds) {
+      await this.runSeeds();
+    }
+  }
+
+  private async runSeeds() {
+
+    try {
+      // Verificar si la tabla existe
+      const tableExists = await this.dataSource.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_name = 'recommendation'
+        );
+      `);
+
+      if (!tableExists[0].exists) {
+        console.log('⚠️ La tabla recommendation no existe. Los seeds se ejecutarán cuando se cree la tabla.');
+        return;
+      }
+
+      // Verificar si hay datos
+      const count = await this.dataSource.query(
+        'SELECT COUNT(*) as count FROM recommendation WHERE name IS NOT NULL'
+      );
+
+      if (parseInt(count[0].count) === 0) {
+        
+        // Importar y ejecutar seeds
+        const { seedRecommendations } = await import('../recommendations/entities/recommendations.seed');
+        await seedRecommendations(this.dataSource);
+        
+      } 
+    } catch (error) {
+      console.error('Error ejecutando seeds:', error);
+    }
+  }
+
+
+
 }
+

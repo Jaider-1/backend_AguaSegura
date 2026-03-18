@@ -1,18 +1,17 @@
 // src/modules/water-quality/water-quality.module.ts
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { WaterQualityService } from './water-quality.service';
 import { WaterQualityController } from './water-quality.controller';
 import { WaterQuality } from './entities/water-quality.entity';
-import { RecommendationsModule } from '../recommendations/recommendations.module'; // ← Importa RecommendationsModule
+import { User } from '../users/entities/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([WaterQuality]),
-    forwardRef(() => RecommendationsModule), // ← Importa RecommendationsModule también
+    TypeOrmModule.forFeature([WaterQuality, User])
   ],
   controllers: [WaterQualityController],
   providers: [WaterQualityService],
-  exports: [WaterQualityService],
+  exports: [WaterQualityService]
 })
 export class WaterQualityModule {}

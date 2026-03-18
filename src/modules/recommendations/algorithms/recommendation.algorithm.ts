@@ -8,10 +8,10 @@ export class RecommendationAlgorithm {
   constructor(private dataSource: DataSource) {}
 
   async generateRecommendations(data: RecommendationRequestData): Promise<GeneratedRecommendation[]> {
-    // Consultar directamente la tabla recommendation_rules en la base de datos
+    // Consultar directamente la tabla recommendation en la base de datos
     const query = `
-      SELECT * FROM recommendation_rules 
-      WHERE is_active = true 
+      SELECT * FROM recommendation
+      WHERE true 
       ORDER BY 
         CASE priority_level 
           WHEN 'critical' THEN 1
@@ -181,10 +181,10 @@ export class RecommendationAlgorithm {
         min_quality_irc, max_quality_irc,
         climate_conditions, reuse_dispositions,
         recommendation_text, priority_level,
-        traffic_light_color, category, is_active,
+        traffic_light_color, category,
         created_at, updated_at
-      FROM recommendation_rules 
-      WHERE is_active = true
+      FROM recommendation 
+      WHERE true
       ORDER BY 
         CASE priority_level 
           WHEN 'critical' THEN 1

@@ -4,18 +4,44 @@ import { User } from '../../users/entities/user.entity';
 import { WaterQuality } from '../../water-quality/entities/water-quality.entity';
 import { WaterQuantity } from '../../water-quantity/entities/water-quantity.entity';
 
-@Entity('recommendations')
+@Entity('recommendation')
 export class Recommendation {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'text' })
+  // Contenido principal de la recomendaciÃ³n/regla
+  @Column({ type: 'text', name: 'recommendation_text' })
   message: string;
 
-  @Column({ enum: ['low', 'medium', 'high', 'critical'] })
+  // Campos de regla (opcionales)
+  @Column({ nullable: true })
+  name?: string;
+
+  @Column({ type: 'text', nullable: true })
+  description?: string;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true, name: 'min_quantity_percentage' })
+  minQuantityPercentage?: number;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true, name: 'max_quantity_percentage' })
+  maxQuantityPercentage?: number;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true, name: 'min_quality_irc' })
+  minQualityIrc?: number;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true, name: 'max_quality_irc' })
+  maxQualityIrc?: number;
+
+  @Column({ type: 'text', array: true, nullable: true, name: 'climate_conditions' })
+  climateConditions?: string[];
+
+  @Column({ type: 'text', array: true, nullable: true, name: 'reuse_dispositions' })
+  reuseDispositions?: string[];
+
+  @Column({ enum: ['low', 'medium', 'high', 'critical'], name: 'priority_level' })
   priorityLevel: string;
 
-  @Column({ enum: ['green', 'yellow', 'red'] })
+  @Column({ enum: ['green', 'yellow', 'red'], name: 'traffic_light_color' })
   trafficLightColor: string;
 
   @Column()
@@ -24,42 +50,39 @@ export class Recommendation {
   @Column({ type: 'jsonb', nullable: true })
   parameters: Record<string, any>;
 
-  @Column({ default: false })
+  @Column({ default: false, name: 'is_read' })
   isRead: boolean;
 
-  @Column({ default: false })
+  @Column({ default: false, name: 'is_applied' })
   isApplied: boolean;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', nullable: true, name: 'applied_at' })
   appliedAt: Date;
 
-  @Column({ default: true })
-  isActive: boolean;
-
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', nullable: true, name: 'expires_at' })
   expiresAt: Date;
 
   @ManyToOne(() => User, user => user.recommendations, { nullable: true })
-  @JoinColumn({ name: 'userId' })
+  @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'user_id' })
   userId: string;
 
   @ManyToOne(() => WaterQuality, { nullable: true })
-  @JoinColumn({ name: 'waterQualityId' })
+  @JoinColumn({ name: 'water_quality_id' })
   waterQuality: WaterQuality;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'water_quality_id' })
   waterQualityId: string;
 
   @ManyToOne(() => WaterQuantity, { nullable: true })
-  @JoinColumn({ name: 'waterQuantityId' })
+  @JoinColumn({ name: 'water_quantity_id' })
   waterQuantity: WaterQuantity;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'water_quantity_id' })
   waterQuantityId: string;
 }
