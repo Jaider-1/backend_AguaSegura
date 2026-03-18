@@ -407,14 +407,10 @@ export class WaterQualityService {
    * Obtiene el último registro
    */
   async getLatest(userId?: string): Promise<WaterQuality> {
-    const where: Record<string, any> = {};
-    if (userId) {
-      where.userId = userId;
-    }
-
-    const latest = await this.waterQualityRepository.findOne({
-      where,
+    const [latest] = await this.waterQualityRepository.find({
+      where: userId ? { userId } : undefined,
       order: { measuredAt: 'DESC' },
+      take: 1,
     });
 
     if (!latest) {
