@@ -6,6 +6,7 @@ import * as bcrypt from 'bcryptjs';
 import { User } from '../users/entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -107,5 +108,30 @@ export class AuthService {
     return await this.usersRepository.findOne({
       where: { id: payload.sub }
     });
+  }
+
+  async changePassword(changePasswordDto: ChangePasswordDto) {
+    const user = await this.usersRepository.findOne({
+      where: { email: changePasswordDto.email }
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Credenciales inválidas');
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      changePasswordDto.currentPassword,
+      user.password
+    );
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Credenciales inválidas');
+    }
+
+    const hashedPassword = await bcrypt.hash(changePasswordDto.newPassword, 10);
+    user.password = hashedPassword;
+    await this.usersRepository.save(user);
+
+    return { message: 'Contraseña actualizada' };
   }
 }
