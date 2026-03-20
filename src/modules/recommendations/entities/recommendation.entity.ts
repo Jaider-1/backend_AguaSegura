@@ -38,6 +38,12 @@ export class Recommendation {
   @Column({ type: 'text', array: true, nullable: true, name: 'reuse_dispositions' })
   reuseDispositions?: string[];
 
+  @Column({ type: 'int', nullable: true, name: 'habitantes' })
+  inhabitants?: number;
+
+  @Column({ type: 'varchar', length: 100, nullable: true, name: 'tipo_vivienda' })
+  housingType?: string;
+
   @Column({ enum: ['low', 'medium', 'high', 'critical'], name: 'priority_level' })
   priorityLevel: string;
 

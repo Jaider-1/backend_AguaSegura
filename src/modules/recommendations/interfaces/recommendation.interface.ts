@@ -7,6 +7,9 @@ export interface RecommendationRequestData {
   qualityIrc?: number;
   climateConditions?: string[];
   reuseDisposition?: string;
+  inhabitants?: number;
+  housingType?: string;
+  // Compatibilidad hacia atrás
   householdSize?: number;
   currentDate?: Date;
 }

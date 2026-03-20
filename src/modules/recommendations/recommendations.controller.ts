@@ -180,7 +180,16 @@ export class RecommendationsController {
     description: 'Recomendaciones generadas exitosamente',
   })
   async generatePublicRecommendations(
-    @Body() body: { quantityPercentage?: number; qualityIrc?: number }
+    @Body()
+    body: {
+      quantityPercentage?: number;
+      qualityIrc?: number;
+      climateConditions?: string[];
+      reuseDisposition?: string;
+      inhabitants?: number;
+      housingType?: string;
+      householdSize?: number;
+    }
   ) {
     const generatedRecs = await this.recommendationsService.generateRecommendationsPublic(body);
 

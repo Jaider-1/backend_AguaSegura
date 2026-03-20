@@ -94,6 +94,21 @@ export class RecommendationAlgorithm {
       if (!ruleDispositions.includes(data.reuseDisposition)) return false;
     }
 
+    // Verificar habitantes (si la regla lo define)
+    if (rule.habitantes !== null && rule.habitantes !== undefined) {
+      const effectiveInhabitants = data.inhabitants ?? data.householdSize;
+      if (effectiveInhabitants === undefined) return false;
+      if (effectiveInhabitants !== parseInt(rule.habitantes, 10)) return false;
+    }
+
+    // Verificar tipo de vivienda (si la regla lo define)
+    if (rule.tipo_vivienda !== null && rule.tipo_vivienda !== undefined && rule.tipo_vivienda !== '') {
+      if (!data.housingType) return false;
+      if (String(data.housingType).toLowerCase() !== String(rule.tipo_vivienda).toLowerCase()) {
+        return false;
+      }
+    }
+
     // Reglas sin condiciones específicas (siempre aplican)
     const hasSpecificConditions = 
       rule.min_quantity_percentage !== null ||
@@ -101,7 +116,9 @@ export class RecommendationAlgorithm {
       rule.min_quality_irc !== null ||
       rule.max_quality_irc !== null ||
       (rule.climate_conditions && rule.climate_conditions.length > 0) ||
-      (rule.reuse_dispositions && rule.reuse_dispositions.length > 0);
+      (rule.reuse_dispositions && rule.reuse_dispositions.length > 0) ||
+      rule.habitantes !== null ||
+      (rule.tipo_vivienda !== null && rule.tipo_vivienda !== undefined && rule.tipo_vivienda !== '');
 
     return !hasSpecificConditions || true;
   }
@@ -131,8 +148,14 @@ export class RecommendationAlgorithm {
       parameters.ruleReuseDispositions = rule.reuse_dispositions;
     }
 
-    if (data.householdSize !== undefined) {
-      parameters.householdSize = data.householdSize;
+    const effectiveInhabitants = data.inhabitants ?? data.householdSize;
+    if (effectiveInhabitants !== undefined) {
+      parameters.inhabitants = effectiveInhabitants;
+      parameters.householdSize = effectiveInhabitants;
+    }
+
+    if (data.housingType) {
+      parameters.housingType = data.housingType;
     }
 
     return parameters;
@@ -180,6 +203,7 @@ export class RecommendationAlgorithm {
         min_quantity_percentage, max_quantity_percentage,
         min_quality_irc, max_quality_irc,
         climate_conditions, reuse_dispositions,
+        habitantes, tipo_vivienda,
         recommendation_text, priority_level,
         traffic_light_color, category,
         created_at, updated_at

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsObject, IsBoolean, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsObject, IsDateString, IsInt, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateRecommendationDto {
@@ -44,4 +44,15 @@ export class CreateRecommendationDto {
   @IsOptional()
   @IsString()
   waterQuantityId?: string;
+
+  @ApiProperty({ example: 4, required: false, description: 'Cantidad de habitantes del hogar' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  inhabitants?: number;
+
+  @ApiProperty({ example: 'casa', required: false, description: 'Tipo de vivienda' })
+  @IsOptional()
+  @IsString()
+  housingType?: string;
 }

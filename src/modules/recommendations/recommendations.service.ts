@@ -185,6 +185,8 @@ export class RecommendationsService {
       userId,
       waterQualityId: qualityId,
       qualityIrc: irca,
+      inhabitants: user.householdSize,
+      housingType: (user as any).housingType,
       householdSize: user.householdSize,
       reuseDisposition: user.reuseDisposition,
       climateConditions: user.climateConditions,
@@ -201,6 +203,8 @@ export class RecommendationsService {
       userId,
       waterQuantityId: quantityId,
       quantityPercentage: quantityData.level,
+      inhabitants: user.householdSize,
+      housingType: (user as any).housingType,
       householdSize: user.householdSize,
       reuseDisposition: user.reuseDisposition,
       climateConditions: user.climateConditions,
@@ -214,6 +218,8 @@ export class RecommendationsService {
 
     const requestData: RecommendationRequestData = {
       userId,
+      inhabitants: user.householdSize,
+      housingType: (user as any).housingType,
       householdSize: user.householdSize,
       reuseDisposition: user.reuseDisposition,
       climateConditions: user.climateConditions,
@@ -260,6 +266,9 @@ export class RecommendationsService {
     qualityIrc?: number;
     climateConditions?: string[];
     reuseDisposition?: string;
+    inhabitants?: number;
+    housingType?: string;
+    // Compatibilidad con clientes antiguos
     householdSize?: number;
   }): Promise<
     Array<{
@@ -278,7 +287,9 @@ export class RecommendationsService {
       qualityIrc: data.qualityIrc,
       climateConditions: data.climateConditions,
       reuseDisposition: data.reuseDisposition,
-      householdSize: data.householdSize,
+      inhabitants: data.inhabitants ?? data.householdSize,
+      housingType: data.housingType,
+      householdSize: data.inhabitants ?? data.householdSize,
     };
 
     // Solo generar, no guardar en DB
@@ -327,7 +338,7 @@ export class RecommendationsService {
         requestData = { qualityIrc: 85 }; // >80%
         break;
       case 'family':
-        requestData = { householdSize: 6 };
+        requestData = { inhabitants: 6, householdSize: 6 };
         break;
       default:
         requestData = { quantityPercentage: 50 }; // normal
@@ -478,6 +489,8 @@ export class RecommendationsService {
         trafficLightColor: genRec.trafficLightColor,
         category: genRec.category,
         parameters: genRec.parameters,
+        inhabitants: requestData.inhabitants ?? requestData.householdSize,
+        housingType: requestData.housingType,
         ...relationData,
       });
 
@@ -577,6 +590,8 @@ export class RecommendationsService {
           max_quality_irc DECIMAL(5,2),
           climate_conditions TEXT[],
           reuse_dispositions TEXT[],
+          habitantes INTEGER,
+          tipo_vivienda VARCHAR(100),
 
           -- Campos compartidos por reglas y recomendaciones generadas
           recommendation_text TEXT NOT NULL,
@@ -613,7 +628,9 @@ export class RecommendationsService {
         ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP,
         ADD COLUMN IF NOT EXISTS user_id UUID,
         ADD COLUMN IF NOT EXISTS water_quality_id UUID,
-        ADD COLUMN IF NOT EXISTS water_quantity_id UUID;
+        ADD COLUMN IF NOT EXISTS water_quantity_id UUID,
+        ADD COLUMN IF NOT EXISTS habitantes INTEGER,
+        ADD COLUMN IF NOT EXISTS tipo_vivienda VARCHAR(100);
     `);
   }
   async getAllRecommendationsAndRules(filters: FilterRecommendationsDto) {
