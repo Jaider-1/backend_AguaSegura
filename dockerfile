@@ -44,4 +44,4 @@ USER nestjs
 EXPOSE 3000
 
 # Usar dumb-init para manejar señales
-CMD ["dumb-init", "node", "dist/main.js"]
+CMD ["dumb-init", "node", "dist/src/main.js"]

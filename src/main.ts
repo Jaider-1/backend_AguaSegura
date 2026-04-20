@@ -37,10 +37,7 @@ async function bootstrap() {
     const port = process.env.PORT || 3000;
     await app.listen(port, '0.0.0.0'); // <-- Escuchar en todas las interfaces
     
-    console.log(`✅ Aplicación iniciada correctamente`);
-    console.log(`📍 URL: http://localhost:${port}`);
-    console.log(`📚 Swagger: http://localhost:${port}/api`);
-    console.log(`🐘 Conectado a PostgreSQL en: ${process.env.DB_HOST}:${process.env.DB_PORT}`);
+    
     
   } catch (error) {
     console.error('❌ Error crítico al iniciar la aplicación:', error);
