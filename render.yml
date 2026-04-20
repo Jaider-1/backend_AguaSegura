@@ -3,7 +3,7 @@ services:
     name: aguasegura-backend
     env: docker
     docker:
-      dockerfilePath: ./Dockerfile
+      dockerfilePath: ./dockerfile
     envVars:
       - key: NODE_ENV
         value: production

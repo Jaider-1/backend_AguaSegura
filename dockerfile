@@ -33,7 +33,6 @@ RUN npm ci --only=production --legacy-peer-deps
 
 # Copiar código compilado desde builder
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/.env.example ./
 
 # Crear usuario no-root para seguridad
 RUN addgroup -g 1001 -S nodejs && \
