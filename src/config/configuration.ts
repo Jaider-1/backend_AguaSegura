@@ -15,17 +15,17 @@ export default () => ({
     password:
       process.env.DB_PASSWORD ||
       process.env.DATABASE_PASSWORD ||
-      'jaider123',
+      '',
     database:
       process.env.DB_DATABASE ||
       process.env.DATABASE_NAME ||
       'aguasegura',
     synchronize: process.env.DB_SYNCHRONIZE
       ? process.env.DB_SYNCHRONIZE === 'true'
-      : true,
+      : false,
   },
   jwt: {
-    secret: process.env.JWT_SECRET || 'fallback_secret_key_min_32_chars_2025',
+    secret: process.env.JWT_SECRET ?? '',
     expiresIn: '24h',
   },
 });

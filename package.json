@@ -36,6 +36,7 @@
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
+    "health:e2e": "node scripts/e2e-health-check.js",
     "install:ci": "npm install --legacy-peer-deps --no-audit",
     "clean": "rm -rf dist coverage .nyc_output",
     "reset": "npm run clean && rm -rf node_modules && npm install --legacy-peer-deps"

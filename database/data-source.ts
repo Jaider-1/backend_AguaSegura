@@ -20,13 +20,13 @@ export const AppDataSource = new DataSource({
   password:
     process.env.DB_PASSWORD ||
     process.env.DATABASE_PASSWORD ||
-    'postgres',
+    '',
   database:
     process.env.DB_DATABASE ||
     process.env.DATABASE_NAME ||
     'aguasegura',
   
-  entities: [__dirname + '/../../src/**/*.entity{.ts,.js}'],
+  entities: [__dirname + '/../src/**/*.entity{.ts,.js}'],
   migrations: [__dirname + '/migrations/*{.ts,.js}'],
   synchronize: process.env.NODE_ENV === 'development', // Solo para desarrollo
   logging: process.env.NODE_ENV === 'development',

@@ -1,43 +1,48 @@
 # ---------------------------
-# 1. Imagen base optimizada
+# 1. Imagen base para compilación
 # ---------------------------
 FROM node:20-alpine AS builder
-# Esta imagen es liviana y adecuada para compilar proyectos TypeScript
 
 WORKDIR /app
-# Establecemos un directorio interno para el código
 
+# Copiar archivos de dependencias
 COPY package*.json ./
-# Copiamos solo dependencias para aprovechar la caché de Docker
 
-RUN npm install
-# Instalamos dependencias necesarias del proyecto
+# Instalar dependencias
+RUN npm ci --legacy-peer-deps
 
+# Copiar código fuente
 COPY . .
-# Ahora copiamos el resto del proyecto NestJS
 
+# Compilar TypeScript
 RUN npm run build
-# Compilamos TypeScript → JavaScript en /dist
 
-
-# ------------------------------------
-# 2. Imagen final (mucho más ligera)
-# ------------------------------------
+# ---------------------------
+# 2. Imagen de producción
+# ---------------------------
 FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install --only=production
-# Solo dependencias necesarias para ejecutar NestJS en producción
+# Instalar dumb-init para manejar señales correctamente
+RUN apk add --no-cache dumb-init
 
+# Copiar dependencias de producción
+COPY package*.json ./
+RUN npm ci --only=production --legacy-peer-deps
+
+# Copiar código compilado desde builder
 COPY --from=builder /app/dist ./dist
-# Copiamos únicamente el código compilado (no TS ni dev-deps)
+COPY --from=builder /app/.env.example ./
+
+# Crear usuario no-root para seguridad
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nestjs -u 1001 && \
+    chown -R nestjs:nodejs /app
+
+USER nestjs
 
 EXPOSE 3000
-# Puerto por defecto en muchos proyectos NestJS
 
-CMD ["node", "dist/main.js"]
-# Ejecuta la aplicación NestJS ya compilada
-FROM node:20-alpine
-RUN npm install --only=production
+# Usar dumb-init para manejar señales
+CMD ["dumb-init", "node", "dist/main.js"]

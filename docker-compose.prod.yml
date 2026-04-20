@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   postgres:
     image: postgres:15-alpine
@@ -6,28 +5,36 @@ services:
     environment:
       POSTGRES_DB: aguasegura
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
     networks:
       - aguasegura-network-prod
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   app:
     image: aguasegura-backend:latest
     container_name: aguasegura-backend-prod
     environment:
-      DATABASE_HOST: postgres
-      DATABASE_PORT: 5432
-      DATABASE_USERNAME: postgres
-      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
-      DATABASE_NAME: aguasegura
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: aguasegura
       JWT_SECRET: ${JWT_SECRET}
       NODE_ENV: production
+      PORT: 3000
+      DB_SYNCHRONIZE: "false"
     ports:
       - "3000:3000"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - aguasegura-network-prod
     restart: unless-stopped
