@@ -22,6 +22,14 @@ import configuration from './config/configuration';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
         const databaseUrl = configService.get<string>('database.url', '');
+        const explicitDbHost = process.env.DB_HOST || process.env.DATABASE_HOST;
+        const isProduction = configService.get<string>('NODE_ENV') === 'production';
+
+        if (isProduction && !databaseUrl && !explicitDbHost) {
+          throw new Error(
+            'Database configuration is missing in production. Set DATABASE_URL or DB_HOST/DB_PORT/DB_USERNAME/DB_PASSWORD/DB_DATABASE.',
+          );
+        }
 
         return {
           type: 'postgres',

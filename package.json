@@ -10,7 +10,7 @@
     "prebuild": "node -v",
     "build": "nest build",
     "start:dev": "nest start --watch",
-    "start": "nest start",
+    "start": "node dist/main",
     "start:prod": "node dist/main",
     "seed": "ts-node database/scripts/run-seeders.ts",
     "seed:dev": "nodemon --watch database --ext ts --exec npm run seed",
