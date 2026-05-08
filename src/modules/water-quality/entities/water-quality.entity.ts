@@ -1,5 +1,5 @@
 // src/modules/water-quality/entities/water-quality.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
 @Entity('water_quality')
@@ -54,10 +54,15 @@ export class WaterQuality {
   @CreateDateColumn()
   measuredAt: Date;
 
-  @ManyToOne(() => User, user => user.waterQualities, { nullable: true })
+  @ManyToOne(() => User, user => user.waterQualities, {
+    nullable: true,
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'userId' })
   user: User;
 
-  @Column({ nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   userId: string;
 
   @CreateDateColumn()

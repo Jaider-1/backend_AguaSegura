@@ -3,6 +3,7 @@ import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { WaterQuantityService } from './water-quantity.service';
 import { CreateWaterQuantityDto } from './dto/create-water-quantity.dto';
+import { WaterQuantityQueryDto } from './dto/water-quantity-query.dto';
 
 @ApiTags('water-quantity')
 @Controller('water-quantity')
@@ -32,29 +33,7 @@ export class WaterQuantityController {
     @Body() batchData: CreateWaterQuantityDto[],
     @Query('deviceId') deviceId: string
   ) {
-    const results = [];
-    
-    for (const data of batchData) {
-      // Asignar deviceId si no viene en cada registro
-      if (!data.deviceId && deviceId) {
-        data.deviceId = deviceId;
-      }
-      
-      try {
-        const result = await this.waterQuantityService.createFromPlainData(data);
-        results.push({ success: true, data: result });
-      } catch (error) {
-        results.push({ success: false, error: error} );
-      }
-    }
-
-    return {
-      success: true,
-      message: `Procesados ${batchData.length} registros`,
-      processed: results.filter(r => r.success).length,
-      failed: results.filter(r => !r.success).length,
-      results
-    };
+    return this.waterQuantityService.createBatchFromDevice(batchData, deviceId);
   }
 
 
@@ -72,15 +51,13 @@ export class WaterQuantityController {
   @ApiOperation({ summary: 'Obtener historial de cantidad de agua' })
   @ApiResponse({ status: 200, description: 'Lista de registros' })
   async findAll(
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-    @Query('limit') limit?: number,
+    @Query() query: WaterQuantityQueryDto,
   ) {
-    const start = startDate ? new Date(startDate) : undefined;
-    const end = endDate ? new Date(endDate) : undefined;
+    const start = query.startDate ? new Date(query.startDate) : undefined;
+    const end = query.endDate ? new Date(query.endDate) : undefined;
     return {
       success: true,
-      data: await this.waterQuantityService.findAllWithFilters(start, end, limit)
+      data: await this.waterQuantityService.findAllWithFilters(start, end, query.limit)
     };
   }
 

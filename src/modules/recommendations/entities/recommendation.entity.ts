@@ -65,24 +65,36 @@ export class Recommendation {
   @Column({ type: 'timestamp', nullable: true, name: 'expires_at' })
   expiresAt: Date;
 
-  @ManyToOne(() => User, user => user.recommendations, { nullable: true })
+  @ManyToOne(() => User, user => user.recommendations, {
+    nullable: true,
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ nullable: true, name: 'user_id' })
+  @Column({ type: 'uuid', nullable: true, name: 'user_id' })
   userId: string;
 
-  @ManyToOne(() => WaterQuality, { nullable: true })
+  @ManyToOne(() => WaterQuality, {
+    nullable: true,
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
   @JoinColumn({ name: 'water_quality_id' })
   waterQuality: WaterQuality;
 
-  @Column({ nullable: true, name: 'water_quality_id' })
+  @Column({ type: 'uuid', nullable: true, name: 'water_quality_id' })
   waterQualityId: string;
 
-  @ManyToOne(() => WaterQuantity, { nullable: true })
+  @ManyToOne(() => WaterQuantity, {
+    nullable: true,
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
   @JoinColumn({ name: 'water_quantity_id' })
   waterQuantity: WaterQuantity;
 
-  @Column({ nullable: true, name: 'water_quantity_id' })
+  @Column({ type: 'uuid', nullable: true, name: 'water_quantity_id' })
   waterQuantityId: string;
 }

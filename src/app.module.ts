@@ -9,12 +9,14 @@ import { WaterQualityModule } from './modules/water-quality/water-quality.module
 import { FormResponsesModule } from './modules/form-responses/form-responses.module';
 import configuration from './config/configuration';
 
+const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
-      envFilePath: '.env',
+      envFilePath,
     }),
     
     TypeOrmModule.forRootAsync({

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, LessThanOrEqual, MoreThanOrEqual, FindOptionsWhere } from 'typeorm';
 import { WaterQuantity } from './entities/water-quantity.entity';
@@ -14,6 +14,8 @@ export class WaterQuantityService {
 
 
    async createFromPlainData(plainDto: CreateWaterQuantityDto, userId?: string): Promise<WaterQuantity> {
+    this.validatePlainData(plainDto);
+
     // Convertir formato plano a formato interno
     const waterQuantityData = {
       level: plainDto.cantidad_porcentual_agua, // Mapear a level (que ya existe como porcentaje)
@@ -30,6 +32,35 @@ export class WaterQuantityService {
 
     const waterQuantity = this.waterQuantityRepository.create(waterQuantityData);
     return await this.waterQuantityRepository.save(waterQuantity);
+  }
+
+  async createBatchFromDevice(batchData: CreateWaterQuantityDto[], deviceId?: string) {
+    const results = [];
+
+    for (const data of batchData) {
+      const normalizedData = {
+        ...data,
+        deviceId: data.deviceId || deviceId,
+      };
+
+      try {
+        const result = await this.createFromPlainData(normalizedData);
+        results.push({ success: true, data: result });
+      } catch (error) {
+        results.push({
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    return {
+      success: true,
+      message: `Procesados ${batchData.length} registros`,
+      processed: results.filter((result) => result.success).length,
+      failed: results.filter((result) => !result.success).length,
+      results,
+    };
   }
 
   async create(createWaterQuantityDto: CreateWaterQuantityDto, userId: string): Promise<WaterQuantity> {
@@ -180,5 +211,15 @@ export class WaterQuantityService {
       latestRecord: latest,
       // Add more stats as needed
     };
+  }
+
+  private validatePlainData(plainDto: CreateWaterQuantityDto): void {
+    if (Number.isNaN(new Date(plainDto.fecha_hora).getTime())) {
+      throw new BadRequestException('fecha_hora debe ser una fecha válida');
+    }
+
+    if (plainDto.cantidad_porcentual_agua < 0 || plainDto.cantidad_porcentual_agua > 100) {
+      throw new BadRequestException('cantidad_porcentual_agua debe estar entre 0 y 100');
+    }
   }
 }

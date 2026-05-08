@@ -1,9 +1,9 @@
 services:
   - type: web
     name: aguasegura-backend
-    env: docker
-    dockerfilePath: ./dockerfile
-    dockerContext: .
+    env: node
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:prod
     envVars:
       - key: NODE_ENV
         value: production

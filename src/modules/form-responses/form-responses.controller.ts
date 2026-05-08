@@ -9,8 +9,6 @@ import {
   Delete, 
   HttpCode, 
   HttpStatus,
-  UsePipes,
-  ValidationPipe 
 } from '@nestjs/common';
 import { 
   ApiTags, 
@@ -20,20 +18,13 @@ import {
   ApiQuery,
   ApiBody
 } from '@nestjs/swagger';
-import { FormResponsesService } from './form-responses.service';
+import { FormResponsesService, UserStats } from './form-responses.service';
 import { CreateFormResponseDto } from './dto/create-form-response.dto';
 import { UpdateFormResponseDto } from './dto/update-form-response.dto';
-
-export interface UserStats {
-  userId: string;
-  totalResponses: number;
-  lastResponse?: Date;
-}
 
 
 @ApiTags('form-responses')
 @Controller('form-responses')
-@UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 export class FormResponsesController {
   constructor(private readonly formResponsesService: FormResponsesService) {}
 
@@ -258,38 +249,26 @@ export class FormResponsesController {
   @ApiResponse({ 
     status: 200, 
     description: 'Respuestas eliminadas',
-    schema: {
-      example: { deletedCount: 3 }
-    }
-  })
-  @ApiParam({ 
-    name: 'userId', 
-    description: 'ID del usuario' 
   })
   async removeByUser(@Param('userId') userId: string) {
     return this.formResponsesService.removeByUser(userId);
   }
 
-  // ========== GET USER STATS ==========
+  // ========== STATS ==========
   @Get('user/:userId/stats')
   @ApiOperation({ 
-    summary: 'Obtener estadísticas de usuario',
-    description: 'Obtiene estadísticas y análisis de las respuestas de un usuario' 
+    summary: 'Obtener estadísticas de respuestas de un usuario',
+    description: 'Calcula estadísticas agregadas de respuestas de un usuario' 
   })
   @ApiResponse({ 
     status: 200, 
-    description: 'Estadísticas obtenidas' 
-  })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Usuario sin respuestas' 
+    description: 'Estadísticas obtenidas exitosamente' 
   })
   @ApiParam({ 
     name: 'userId', 
     description: 'ID del usuario' 
   })
-  async getUserStats(@Param('userId') userId: string): Promise<UserStats> {
-    const stats = await this.formResponsesService.getUserStats(userId);
-    return { userId, ...stats };
+  async getUserStats(@Param('userId') userId: string) {
+    return this.formResponsesService.getUserStats(userId);
   }
 }
