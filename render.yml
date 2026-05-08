@@ -3,7 +3,9 @@ services:
     name: aguasegura-backend
     env: node
     buildCommand: npm ci && npm run build
-    startCommand: npm run start:prod
+    # Ejecuta migraciones compiladas (JS) antes de arrancar para asegurar esquema actualizado
+    # Utiliza el JS compilado en `dist` para evitar depender de `ts-node` en producción.
+    startCommand: node dist/database/scripts/run-migrations.js && npm run start:prod
     envVars:
       - key: NODE_ENV
         value: production
