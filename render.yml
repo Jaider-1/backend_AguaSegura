@@ -19,7 +19,7 @@ services:
     autoDeploy: true
 
 databases:
-  - name: aguasegura-db
-    databaseName: aguasegura
-    user: aguasegura_user
+  - name: aguasegura_bd
+    databaseName: aguasegura_bd
+    user: saido
     plan: free
