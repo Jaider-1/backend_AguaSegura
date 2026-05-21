@@ -1,39 +1,42 @@
 import { AppDataSource } from '../data-source';
 import { Recommendation } from '../../src/modules/recommendations/entities/recommendation.entity';
-
-const BASELINE_RULE_NAME = 'BASELINE_WATER_CARE_RULE';
+import { seedRecommendations } from '../../src/modules/recommendations/entities/recommendations.seed';
 
 async function runSeeders() {
   try {
     await AppDataSource.initialize();
     console.log('Database connection established.');
+    const forceReseed = process.env.FORCE_RESEED === 'true';
 
     const recommendationRepository = AppDataSource.getRepository(Recommendation);
-    const existingRule = await recommendationRepository.findOne({
-      where: { name: BASELINE_RULE_NAME },
-    });
+    const existingRulesCount = await recommendationRepository
+      .createQueryBuilder('r')
+      .where('r.name IS NOT NULL')
+      .getCount();
 
-    if (existingRule) {
-      console.log(`Seeder skipped. Rule "${BASELINE_RULE_NAME}" already exists.`);
+    if (existingRulesCount > 0 && !forceReseed) {
+      console.log(`Seeder skipped. Found ${existingRulesCount} existing recommendation rule(s).`);
       return;
     }
 
-    await recommendationRepository.save(
-      recommendationRepository.create({
-        name: BASELINE_RULE_NAME,
-        message: 'Mantenga recipientes limpios y tapados para reducir riesgos de contaminacion.',
-        description: 'Regla base aplicada cuando no hay condiciones de riesgo elevadas.',
-        priorityLevel: 'low',
-        trafficLightColor: 'green',
-        category: 'basica',
-        parameters: {
-          source: 'seed',
-          version: 1,
-        },
-      }),
-    );
+    if (existingRulesCount > 0 && forceReseed) {
+      await recommendationRepository
+        .createQueryBuilder()
+        .delete()
+        .from(Recommendation)
+        .where('name IS NOT NULL')
+        .execute();
+      console.log(`Force reseed enabled. Deleted ${existingRulesCount} existing recommendation rule(s).`);
+    }
 
-    console.log(`Seeder completed. Rule "${BASELINE_RULE_NAME}" was created.`);
+    await seedRecommendations(AppDataSource);
+
+    const insertedRulesCount = await recommendationRepository
+      .createQueryBuilder('r')
+      .where('r.name IS NOT NULL')
+      .getCount();
+
+    console.log(`Seeder completed. Inserted ${insertedRulesCount} recommendation rule(s).`);
   } catch (error) {
     console.error('Failed to run seeders:', error);
     process.exitCode = 1;

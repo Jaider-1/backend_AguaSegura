@@ -113,7 +113,7 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
       max_quality_irc: 5,
       recommendation_text: 'SOSTENIBILIDAD: Mantener consumo dentro de metas sostenibles ODS 6 (ideal ≤100 litros/persona/día). Inspeccionar, limpiar y desinfectar tanques de almacenamiento cada 6 meses (solución de cloro al 0.1%). Verificar y reparar inmediatamente fugas en tuberías internas y conexiones domiciliarias. Establecer programa de monitoreo periódico de calidad (parámetros microbiológicos básicos mensuales, químicos semestrales). Promover prácticas de uso eficiente como estándar permanente, no solo en escasez.',
       priority_level: 'low',
-      traffic_light_color: 'blue',
+      traffic_light_color: 'green',
       category: 'óptimo',
     },
 
@@ -127,7 +127,7 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
       max_quality_irc: 5,
       recommendation_text: 'MANTENIMIENTO PREVENTIVO: Reparar todas las fugas internas (grifos, inodoros) y reportar fugas en red pública. Una gota por segundo = ~10,000 litros/año desperdiciados. Instalar aireadores en el 100% de grifos (ahorro 30-50%). Programar riego de jardines al amanecer o atardecer (reduce evaporación 40%). Promover tecnologías WASH eficientes: inodoros de bajo volumen (6L/descarga), lavadoras de alta eficiencia (45L/carga vs 70L tradicional). La ONU estima que la reducción de pérdidas en distribución puede aumentar disponibilidad en 20-30%.',
       priority_level: 'low',
-      traffic_light_color: 'blue',
+      traffic_light_color: 'green',
       category: 'conservación',
     },
   ];
@@ -169,3 +169,4 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
     ]);
   }
 }
+

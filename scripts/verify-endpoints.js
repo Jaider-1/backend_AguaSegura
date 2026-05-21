@@ -19,7 +19,7 @@ const endpoints = [
   { method: 'GET', path: '/water-quality/stats', expected: [200, 404] },
   { method: 'GET', path: `/water-quality/${SAMPLE_UUID}`, expected: [200, 404] },
   { method: 'POST', path: '/water-quality/upload/csv', formData: { deviceId: 'verify-script' }, expected: [200, 201, 400] },
-  { method: 'POST', path: '/water-quality/calculate', body: {}, expected: [200, 400] },
+  { method: 'POST', path: '/water-quality/calculate', body: {}, expected: [200, 201, 400] },
 
   { method: 'POST', path: '/water-quantity/plain', body: {}, expected: [200, 201, 400] },
   { method: 'POST', path: '/water-quantity/device/batch', body: [], expected: [200, 201, 400] },

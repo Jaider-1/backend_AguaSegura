@@ -195,9 +195,11 @@ export class WaterQuantityService {
 
   // NEW: Public methods for public endpoints
   async getLatest(): Promise<WaterQuantity | null> {
-    return this.waterQuantityRepository.findOne({
+    const rows = await this.waterQuantityRepository.find({
       order: { createdAt: "DESC" },
+      take: 1,
     });
+    return rows[0] ?? null;
   }
 
   async getStats(): Promise<{ totalRecords: number; latestRecord: WaterQuantity | null }> {

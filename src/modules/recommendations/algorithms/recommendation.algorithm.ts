@@ -1,4 +1,3 @@
-// src/modules/recommendations/algorithms/recommendation.algorithm.ts
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { RecommendationRequestData, GeneratedRecommendation } from '../interfaces/recommendation.interface';
@@ -8,12 +7,11 @@ export class RecommendationAlgorithm {
   constructor(private dataSource: DataSource) {}
 
   async generateRecommendations(data: RecommendationRequestData): Promise<GeneratedRecommendation[]> {
-    // Consultar directamente la tabla recommendation en la base de datos
     const query = `
       SELECT * FROM recommendation
-      WHERE true 
-      ORDER BY 
-        CASE priority_level 
+      WHERE name IS NOT NULL
+      ORDER BY
+        CASE priority_level
           WHEN 'critical' THEN 1
           WHEN 'high' THEN 2
           WHEN 'medium' THEN 3
@@ -23,10 +21,8 @@ export class RecommendationAlgorithm {
     `;
 
     const allRules = await this.dataSource.query(query);
-
     const recommendations: GeneratedRecommendation[] = [];
 
-    // Evaluar cada regla
     for (const rule of allRules) {
       if (this.isRuleApplicable(rule, data)) {
         recommendations.push({
@@ -39,10 +35,9 @@ export class RecommendationAlgorithm {
       }
     }
 
-    // Si no hay recomendaciones de reglas, agregar una general
     if (recommendations.length === 0) {
       recommendations.push({
-        message: 'Mantener buenas prácticas de uso del agua y realizar monitoreo regular.',
+        message: 'Mantener buenas practicas de uso del agua y realizar monitoreo regular.',
         priorityLevel: 'low',
         trafficLightColor: 'green',
         category: 'mantenimiento',
@@ -50,60 +45,77 @@ export class RecommendationAlgorithm {
       });
     }
 
-    // Ordenar por prioridad (critical primero) y limitar a 3
     return this.sortRecommendations(recommendations).slice(0, 3);
   }
 
   private isRuleApplicable(rule: any, data: RecommendationRequestData): boolean {
-    // Verificar cantidad de agua
-    if (rule.min_quantity_percentage !== null && rule.max_quantity_percentage !== null) {
-      if (data.quantityPercentage === undefined) return false;
-      if (data.quantityPercentage < parseFloat(rule.min_quantity_percentage) || 
-          data.quantityPercentage > parseFloat(rule.max_quantity_percentage)) {
+    const hasQuantityRange =
+      rule.min_quantity_percentage !== null && rule.max_quantity_percentage !== null;
+    const hasQualityRange = rule.min_quality_irc !== null && rule.max_quality_irc !== null;
+
+    if (
+      hasQuantityRange &&
+      data.quantityPercentage !== undefined
+    ) {
+      if (
+        data.quantityPercentage < parseFloat(rule.min_quantity_percentage) ||
+        data.quantityPercentage > parseFloat(rule.max_quantity_percentage)
+      ) {
         return false;
       }
     }
+    if (hasQuantityRange && data.quantityPercentage === undefined) {
+      const minQty = parseFloat(rule.min_quantity_percentage);
+      const maxQty = parseFloat(rule.max_quantity_percentage);
+      const defaultQuantity = 50;
+      if (defaultQuantity < minQty || defaultQuantity > maxQty) return false;
+    }
 
-    // Verificar calidad del agua (IRCA)
-    if (rule.min_quality_irc !== null && rule.max_quality_irc !== null) {
-      if (data.qualityIrc === undefined) return false;
-      if (data.qualityIrc < parseFloat(rule.min_quality_irc) || 
-          data.qualityIrc > parseFloat(rule.max_quality_irc)) {
+    if (
+      hasQualityRange &&
+      data.qualityIrc !== undefined
+    ) {
+      if (
+        data.qualityIrc < parseFloat(rule.min_quality_irc) ||
+        data.qualityIrc > parseFloat(rule.max_quality_irc)
+      ) {
         return false;
       }
     }
+    if (hasQualityRange && data.qualityIrc === undefined) {
+      const minQuality = parseFloat(rule.min_quality_irc);
+      const maxQuality = parseFloat(rule.max_quality_irc);
+      const defaultQuality = 0;
+      if (defaultQuality < minQuality || defaultQuality > maxQuality) return false;
+    }
 
-    // Verificar condiciones climáticas
     if (rule.climate_conditions && rule.climate_conditions.length > 0) {
-      if (!data.climateConditions || data.climateConditions.length === 0) return false;
-      
-      // Convertir string de array a array real
-      const ruleConditions = rule.climate_conditions.split(',').map((c: string) => c.trim());
-      const hasMatchingCondition = data.climateConditions.some(condition => 
-        ruleConditions.includes(condition)
+      if (!data.climateConditions?.length) return false;
+      const ruleConditions = Array.isArray(rule.climate_conditions)
+        ? rule.climate_conditions
+        : String(rule.climate_conditions)
+            .split(',')
+            .map((c: string) => c.trim());
+
+      const hasMatchingCondition = data.climateConditions.some((condition) =>
+        ruleConditions.includes(condition),
       );
+
       if (!hasMatchingCondition) return false;
     }
 
-    // Verificar disposición al reuso
     if (rule.reuse_dispositions && rule.reuse_dispositions.length > 0) {
       if (!data.reuseDisposition) return false;
-      
-      // Convertir string de array a array real
-      const ruleDispositions = rule.reuse_dispositions.split(',').map((d: string) => d.trim());
+      const ruleDispositions = Array.isArray(rule.reuse_dispositions)
+        ? rule.reuse_dispositions
+        : String(rule.reuse_dispositions)
+            .split(',')
+            .map((d: string) => d.trim());
+
       if (!ruleDispositions.includes(data.reuseDisposition)) return false;
     }
 
-    // Reglas sin condiciones específicas (siempre aplican)
-    const hasSpecificConditions = 
-      rule.min_quantity_percentage !== null ||
-      rule.max_quantity_percentage !== null ||
-      rule.min_quality_irc !== null ||
-      rule.max_quality_irc !== null ||
-      (rule.climate_conditions && rule.climate_conditions.length > 0) ||
-      (rule.reuse_dispositions && rule.reuse_dispositions.length > 0);
-
-    return !hasSpecificConditions || true;
+    return true;
   }
 
   private extractRuleParameters(rule: any, data: RecommendationRequestData): Record<string, any> {
@@ -140,53 +152,50 @@ export class RecommendationAlgorithm {
 
   private sortRecommendations(recommendations: GeneratedRecommendation[]): GeneratedRecommendation[] {
     const priorityOrder = { critical: 1, high: 2, medium: 3, low: 4 };
-    
-    return recommendations.sort((a, b) => {
-      return priorityOrder[a.priorityLevel] - priorityOrder[b.priorityLevel];
-    });
+
+    return recommendations.sort((a, b) => priorityOrder[a.priorityLevel] - priorityOrder[b.priorityLevel]);
   }
 
   calculateIRCA(qualityData: any): number {
     let irca = 0;
-    
+
     if (qualityData.ph) {
       if (qualityData.ph < 6.5 || qualityData.ph > 8.5) irca += 20;
     }
-    
+
     if (qualityData.turbidity && qualityData.turbidity > 5) {
       irca += Math.min(30, (qualityData.turbidity - 5) * 3);
     }
-    
+
     if (qualityData.temperature) {
       if (qualityData.temperature < 15 || qualityData.temperature > 25) irca += 15;
     }
-    
+
     if (qualityData.conductivity && qualityData.conductivity > 1500) {
       irca += Math.min(25, (qualityData.conductivity - 1500) / 60);
     }
-    
+
     if (qualityData.dissolvedOxygen && qualityData.dissolvedOxygen < 5) {
       irca += 10;
     }
-    
+
     return Math.min(100, irca);
   }
 
-  // Método para obtener reglas directamente (para admin)
   async getRules(): Promise<any[]> {
     return this.dataSource.query(`
-      SELECT 
-        id, name, description, 
+      SELECT
+        id, name, description,
         min_quantity_percentage, max_quantity_percentage,
         min_quality_irc, max_quality_irc,
         climate_conditions, reuse_dispositions,
         recommendation_text, priority_level,
         traffic_light_color, category,
         created_at, updated_at
-      FROM recommendation 
-      WHERE true
-      ORDER BY 
-        CASE priority_level 
+      FROM recommendation
+      WHERE name IS NOT NULL
+      ORDER BY
+        CASE priority_level
           WHEN 'critical' THEN 1
           WHEN 'high' THEN 2
           WHEN 'medium' THEN 3
