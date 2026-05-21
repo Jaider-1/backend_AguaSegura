@@ -103,7 +103,7 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
       category: 'calidad',
     },
 
-    // 8. CONDICIONES ÓPTIMAS - SOSTENIBILIDAD (AZUL)
+    // 8. CONDICIONES ÓPTIMAS - SOSTENIBILIDAD (VERDE)
     {
       name: 'Condiciones óptimas - Sostenibilidad',
       description: 'Agua abundante y de excelente calidad (IRCA <5%) - Enfoque ODS 6',
@@ -117,7 +117,7 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
       category: 'óptimo',
     },
 
-    // 9. CONSERVACIÓN SOSTENIBLE - MANTENIMIENTO (AZUL)
+    // 9. CONSERVACIÓN SOSTENIBLE - MANTENIMIENTO (VERDE)
     {
       name: 'Conservación sostenible',
       description: 'Prácticas de conservación y reducción de pérdidas según estándares ONU',
@@ -169,4 +169,5 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
     ]);
   }
 }
+
 

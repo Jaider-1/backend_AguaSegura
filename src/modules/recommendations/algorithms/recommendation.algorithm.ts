@@ -11,13 +11,14 @@ export class RecommendationAlgorithm {
       SELECT * FROM recommendation
       WHERE name IS NOT NULL
       ORDER BY
-        CASE priority_level
-          WHEN 'critical' THEN 1
-          WHEN 'high' THEN 2
-          WHEN 'medium' THEN 3
-          WHEN 'low' THEN 4
+        CASE
+          WHEN priority_level = 'critical' THEN 1
+          WHEN priority_level = 'high' THEN 2
+          WHEN priority_level = 'medium' THEN 3
+          WHEN priority_level = 'low' THEN 4
+          ELSE 5
         END,
-        created_at DESC
+        id DESC
     `;
 
     const allRules = await this.dataSource.query(query);
@@ -195,11 +196,12 @@ export class RecommendationAlgorithm {
       FROM recommendation
       WHERE name IS NOT NULL
       ORDER BY
-        CASE priority_level
-          WHEN 'critical' THEN 1
-          WHEN 'high' THEN 2
-          WHEN 'medium' THEN 3
-          WHEN 'low' THEN 4
+        CASE
+          WHEN priority_level = 'critical' THEN 1
+          WHEN priority_level = 'high' THEN 2
+          WHEN priority_level = 'medium' THEN 3
+          WHEN priority_level = 'low' THEN 4
+          ELSE 5
         END
     `);
   }
