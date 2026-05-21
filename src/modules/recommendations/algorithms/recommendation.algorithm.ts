@@ -12,10 +12,10 @@ export class RecommendationAlgorithm {
       WHERE name IS NOT NULL
       ORDER BY
         CASE
-          WHEN priority_level = 'critical' THEN 1
-          WHEN priority_level = 'high' THEN 2
-          WHEN priority_level = 'medium' THEN 3
-          WHEN priority_level = 'low' THEN 4
+          WHEN priority_level::text = 'critical' THEN 1
+          WHEN priority_level::text = 'high' THEN 2
+          WHEN priority_level::text = 'medium' THEN 3
+          WHEN priority_level::text = 'low' THEN 4
           ELSE 5
         END,
         id DESC
@@ -197,10 +197,10 @@ export class RecommendationAlgorithm {
       WHERE name IS NOT NULL
       ORDER BY
         CASE
-          WHEN priority_level = 'critical' THEN 1
-          WHEN priority_level = 'high' THEN 2
-          WHEN priority_level = 'medium' THEN 3
-          WHEN priority_level = 'low' THEN 4
+          WHEN priority_level::text = 'critical' THEN 1
+          WHEN priority_level::text = 'high' THEN 2
+          WHEN priority_level::text = 'medium' THEN 3
+          WHEN priority_level::text = 'low' THEN 4
           ELSE 5
         END
     `);

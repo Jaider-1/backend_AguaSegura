@@ -352,10 +352,10 @@ export class RecommendationsService {
       SELECT * FROM recommendation 
       ORDER BY 
         CASE
-          WHEN priority_level = 'critical' THEN 1
-          WHEN priority_level = 'high' THEN 2
-          WHEN priority_level = 'medium' THEN 3
-          WHEN priority_level = 'low' THEN 4
+          WHEN priority_level::text = 'critical' THEN 1
+          WHEN priority_level::text = 'high' THEN 2
+          WHEN priority_level::text = 'medium' THEN 3
+          WHEN priority_level::text = 'low' THEN 4
           ELSE 5
         END,
         id DESC
@@ -371,10 +371,10 @@ export class RecommendationsService {
       WHERE true 
       ORDER BY 
         CASE
-          WHEN priority_level = 'critical' THEN 1
-          WHEN priority_level = 'high' THEN 2
-          WHEN priority_level = 'medium' THEN 3
-          WHEN priority_level = 'low' THEN 4
+          WHEN priority_level::text = 'critical' THEN 1
+          WHEN priority_level::text = 'high' THEN 2
+          WHEN priority_level::text = 'medium' THEN 3
+          WHEN priority_level::text = 'low' THEN 4
           ELSE 5
         END,
         id DESC
@@ -674,14 +674,8 @@ export class RecommendationsService {
       UPDATE recommendation
       SET
         recommendation_text = COALESCE(recommendation_text, ''),
-        priority_level = CASE
-          WHEN priority_level IN ('critical', 'high', 'medium', 'low') THEN priority_level
-          ELSE 'low'
-        END,
-        traffic_light_color = CASE
-          WHEN traffic_light_color IN ('red', 'yellow', 'green') THEN traffic_light_color
-          ELSE 'green'
-        END,
+        priority_level = COALESCE(priority_level, 'low'),
+        traffic_light_color = COALESCE(traffic_light_color, 'green'),
         category = COALESCE(NULLIF(category, ''), 'general'),
         created_at = COALESCE(created_at, NOW()),
         updated_at = COALESCE(updated_at, NOW());
