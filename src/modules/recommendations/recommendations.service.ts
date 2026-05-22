@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, FindOptionsWhere, In, IsNull, SelectQueryBuilder } from 'typeorm';
+import { Repository, Between, FindOptionsWhere, In, IsNull, Not, SelectQueryBuilder } from 'typeorm';
 import { DataSource } from 'typeorm';
 import { Recommendation } from './entities/recommendation.entity';
 import { CreateRecommendationDto } from './dto/create-recommendation.dto';
@@ -347,38 +347,25 @@ export class RecommendationsService {
   // Método para obtener TODAS las reglas (activas e inactivas)
   async getAllRules() {
     await this.ensureRecommendationRulesTable();
-
-    return this.dataSource.query(`
-      SELECT * FROM recommendation 
-      ORDER BY 
-        CASE
-          WHEN priority_level::text = 'critical' THEN 1
-          WHEN priority_level::text = 'high' THEN 2
-          WHEN priority_level::text = 'medium' THEN 3
-          WHEN priority_level::text = 'low' THEN 4
-          ELSE 5
-        END,
-        id DESC
-    `);
+    return this.recommendationsRepository.find({
+      where: { name: Not(IsNull()) },
+      order: {
+        priorityLevel: 'ASC',
+        createdAt: 'DESC',
+      },
+    });
   }
 
   // Método existente para obtener solo reglas activas
   async getActiveRules() {
     await this.ensureRecommendationRulesTable();
-
-    return this.dataSource.query(`
-      SELECT * FROM recommendation 
-      WHERE true 
-      ORDER BY 
-        CASE
-          WHEN priority_level::text = 'critical' THEN 1
-          WHEN priority_level::text = 'high' THEN 2
-          WHEN priority_level::text = 'medium' THEN 3
-          WHEN priority_level::text = 'low' THEN 4
-          ELSE 5
-        END,
-        id DESC
-    `);
+    return this.recommendationsRepository.find({
+      where: { name: Not(IsNull()) },
+      order: {
+        priorityLevel: 'ASC',
+        createdAt: 'DESC',
+      },
+    });
   }
 
   async findRulesByCategory(category: string) {

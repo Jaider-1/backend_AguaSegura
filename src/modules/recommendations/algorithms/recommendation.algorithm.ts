@@ -1,35 +1,29 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { RecommendationRequestData, GeneratedRecommendation } from '../interfaces/recommendation.interface';
+import { Recommendation } from '../entities/recommendation.entity';
 
 @Injectable()
 export class RecommendationAlgorithm {
   constructor(private dataSource: DataSource) {}
 
   async generateRecommendations(data: RecommendationRequestData): Promise<GeneratedRecommendation[]> {
-    const query = `
-      SELECT * FROM recommendation
-      WHERE name IS NOT NULL
-      ORDER BY
-        CASE
-          WHEN priority_level::text = 'critical' THEN 1
-          WHEN priority_level::text = 'high' THEN 2
-          WHEN priority_level::text = 'medium' THEN 3
-          WHEN priority_level::text = 'low' THEN 4
-          ELSE 5
-        END,
-        id DESC
-    `;
-
-    const allRules = await this.dataSource.query(query);
+    const ruleRepository = this.dataSource.getRepository(Recommendation);
+    const allRules = await ruleRepository.find({
+      where: { userId: null },
+      order: {
+        priorityLevel: 'ASC',
+        createdAt: 'DESC',
+      },
+    });
     const recommendations: GeneratedRecommendation[] = [];
 
     for (const rule of allRules) {
       if (this.isRuleApplicable(rule, data)) {
         recommendations.push({
-          message: rule.recommendation_text,
-          priorityLevel: rule.priority_level,
-          trafficLightColor: rule.traffic_light_color,
+          message: rule.message,
+          priorityLevel: rule.priorityLevel,
+          trafficLightColor: rule.trafficLightColor,
           category: rule.category,
           parameters: this.extractRuleParameters(rule, data),
         });
@@ -51,23 +45,23 @@ export class RecommendationAlgorithm {
 
   private isRuleApplicable(rule: any, data: RecommendationRequestData): boolean {
     const hasQuantityRange =
-      rule.min_quantity_percentage !== null && rule.max_quantity_percentage !== null;
-    const hasQualityRange = rule.min_quality_irc !== null && rule.max_quality_irc !== null;
+      rule.minQuantityPercentage !== null && rule.maxQuantityPercentage !== null;
+    const hasQualityRange = rule.minQualityIrc !== null && rule.maxQualityIrc !== null;
 
     if (
       hasQuantityRange &&
       data.quantityPercentage !== undefined
     ) {
       if (
-        data.quantityPercentage < parseFloat(rule.min_quantity_percentage) ||
-        data.quantityPercentage > parseFloat(rule.max_quantity_percentage)
+        data.quantityPercentage < parseFloat(rule.minQuantityPercentage) ||
+        data.quantityPercentage > parseFloat(rule.maxQuantityPercentage)
       ) {
         return false;
       }
     }
     if (hasQuantityRange && data.quantityPercentage === undefined) {
-      const minQty = parseFloat(rule.min_quantity_percentage);
-      const maxQty = parseFloat(rule.max_quantity_percentage);
+      const minQty = parseFloat(rule.minQuantityPercentage);
+      const maxQty = parseFloat(rule.maxQuantityPercentage);
       const defaultQuantity = 50;
       if (defaultQuantity < minQty || defaultQuantity > maxQty) return false;
     }
@@ -77,24 +71,24 @@ export class RecommendationAlgorithm {
       data.qualityIrc !== undefined
     ) {
       if (
-        data.qualityIrc < parseFloat(rule.min_quality_irc) ||
-        data.qualityIrc > parseFloat(rule.max_quality_irc)
+        data.qualityIrc < parseFloat(rule.minQualityIrc) ||
+        data.qualityIrc > parseFloat(rule.maxQualityIrc)
       ) {
         return false;
       }
     }
     if (hasQualityRange && data.qualityIrc === undefined) {
-      const minQuality = parseFloat(rule.min_quality_irc);
-      const maxQuality = parseFloat(rule.max_quality_irc);
+      const minQuality = parseFloat(rule.minQualityIrc);
+      const maxQuality = parseFloat(rule.maxQualityIrc);
       const defaultQuality = 0;
       if (defaultQuality < minQuality || defaultQuality > maxQuality) return false;
     }
 
-    if (rule.climate_conditions && rule.climate_conditions.length > 0) {
+    if (rule.climateConditions && rule.climateConditions.length > 0) {
       if (!data.climateConditions?.length) return false;
-      const ruleConditions = Array.isArray(rule.climate_conditions)
-        ? rule.climate_conditions
-        : String(rule.climate_conditions)
+      const ruleConditions = Array.isArray(rule.climateConditions)
+        ? rule.climateConditions
+        : String(rule.climateConditions)
             .split(',')
             .map((c: string) => c.trim());
 
@@ -105,11 +99,11 @@ export class RecommendationAlgorithm {
       if (!hasMatchingCondition) return false;
     }
 
-    if (rule.reuse_dispositions && rule.reuse_dispositions.length > 0) {
+    if (rule.reuseDispositions && rule.reuseDispositions.length > 0) {
       if (!data.reuseDisposition) return false;
-      const ruleDispositions = Array.isArray(rule.reuse_dispositions)
-        ? rule.reuse_dispositions
-        : String(rule.reuse_dispositions)
+      const ruleDispositions = Array.isArray(rule.reuseDispositions)
+        ? rule.reuseDispositions
+        : String(rule.reuseDispositions)
             .split(',')
             .map((d: string) => d.trim());
 
@@ -124,24 +118,24 @@ export class RecommendationAlgorithm {
 
     if (data.quantityPercentage !== undefined) {
       parameters.quantityPercentage = data.quantityPercentage;
-      parameters.ruleQuantityMin = rule.min_quantity_percentage;
-      parameters.ruleQuantityMax = rule.max_quantity_percentage;
+      parameters.ruleQuantityMin = rule.minQuantityPercentage;
+      parameters.ruleQuantityMax = rule.maxQuantityPercentage;
     }
 
     if (data.qualityIrc !== undefined) {
       parameters.qualityIrc = data.qualityIrc;
-      parameters.ruleQualityMin = rule.min_quality_irc;
-      parameters.ruleQualityMax = rule.max_quality_irc;
+      parameters.ruleQualityMin = rule.minQualityIrc;
+      parameters.ruleQualityMax = rule.maxQualityIrc;
     }
 
     if (data.climateConditions) {
       parameters.climateConditions = data.climateConditions;
-      parameters.ruleClimateConditions = rule.climate_conditions;
+      parameters.ruleClimateConditions = rule.climateConditions;
     }
 
     if (data.reuseDisposition) {
       parameters.reuseDisposition = data.reuseDisposition;
-      parameters.ruleReuseDispositions = rule.reuse_dispositions;
+      parameters.ruleReuseDispositions = rule.reuseDispositions;
     }
 
     if (data.householdSize !== undefined) {
@@ -184,25 +178,13 @@ export class RecommendationAlgorithm {
   }
 
   async getRules(): Promise<any[]> {
-    return this.dataSource.query(`
-      SELECT
-        id, name, description,
-        min_quantity_percentage, max_quantity_percentage,
-        min_quality_irc, max_quality_irc,
-        climate_conditions, reuse_dispositions,
-        recommendation_text, priority_level,
-        traffic_light_color, category,
-        created_at, updated_at
-      FROM recommendation
-      WHERE name IS NOT NULL
-      ORDER BY
-        CASE
-          WHEN priority_level::text = 'critical' THEN 1
-          WHEN priority_level::text = 'high' THEN 2
-          WHEN priority_level::text = 'medium' THEN 3
-          WHEN priority_level::text = 'low' THEN 4
-          ELSE 5
-        END
-    `);
+    const ruleRepository = this.dataSource.getRepository(Recommendation);
+    return ruleRepository.find({
+      where: { userId: null },
+      order: {
+        priorityLevel: 'ASC',
+        createdAt: 'DESC',
+      },
+    });
   }
 }
