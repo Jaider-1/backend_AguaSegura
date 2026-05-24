@@ -51,7 +51,7 @@ export class WaterQuality {
   @Column({ nullable: true })
   deviceId: string;
 
-  @CreateDateColumn()
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   measuredAt: Date;
 
   @ManyToOne(() => User, user => user.waterQualities, {
