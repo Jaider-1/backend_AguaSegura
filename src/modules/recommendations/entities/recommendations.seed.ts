@@ -134,6 +134,8 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
       traffic_light_color: 'yellow',
       category: 'conservación',
     },
+
+    // 8. CONDICIONES ÓPTIMAS - SOSTENIBILIDAD (VERDE)
     {
       name: 'Consumo eficiente urbano',
       description: 'Apartamento con buena calidad',
@@ -145,6 +147,8 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
       traffic_light_color: 'green',
       category: 'óptimo',
     },
+
+    // 9. CONSERVACIÓN SOSTENIBLE - MANTENIMIENTO (VERDE)
     {
       name: 'Optimización en casas',
       description: 'Alta disponibilidad en vivienda tipo casa',
@@ -163,7 +167,7 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
       recommendation_text: 'Control total del consumo.',
       priority_level: 'low',
       traffic_light_color: 'green',
-      category: 'óptimo',
+      category: 'conservación',
     },
   ];
 
@@ -208,3 +212,5 @@ export async function seedRecommendations(dataSource: DataSource): Promise<void>
     ]);
   }
 }
+
+

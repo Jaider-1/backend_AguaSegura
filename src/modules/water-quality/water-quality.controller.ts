@@ -2,39 +2,46 @@
 import { Controller, Get, Post, Body, Param, Query, BadRequestException, UploadedFile, UseInterceptors, Headers } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody, ApiHeader, ApiQuery } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Express } from 'express';
 import { WaterQualityService } from './water-quality.service';
 import { CreateWaterQualityDto } from './dto/create-water-quality.dto';
 import { CsvUploadResponseDto } from './dto/water-quality-upload.dto';
 import { WaterQuality } from './entities/water-quality.entity';
 
-// Transformador para respuestas API - VERSIÓN CORREGIDA
-const toWaterDataView = (record: WaterQuality) => {
-  // Log para debugging
+// Transformador para respuestas API - versión más robusta
+const toWaterDataView = (record?: WaterQuality) => {
+  if (!record) return null;
+
+  // Convierte campos decimales (TypeORM puede retornar strings) a number
+  const safeNumber = (v: any) => {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  // Log para debugging (solo campos clave)
   console.log('Transformando registro:', {
     id: record.id,
     calidad: record.calidad,
     calidadCategoria: record.calidadCategoria,
-    calidadColor: record.calidadColor
   });
 
   return {
     id: record.id,
-    fecha_hora: record.measuredAt,
-    // Parámetros crudos
-    ph: record.ph,
-    temperatura: record.temperature,
-    turbidez: record.turbidity,
-    conductividad: record.conductivity,
-    oxigeno: record.dissolvedOxygen,
-    // LO QUE IMPORTANTE PARA EL FRONTEND - VALORES POR DEFECTO
-    calidad: record.calidad ?? 0,           // Si es null/undefined, envía 0
+    fecha_hora: record.measuredAt ? new Date(record.measuredAt).toISOString() : null,
+    // Parámetros crudos (coerción segura a número)
+    ph: safeNumber(record.ph),
+    temperatura: safeNumber(record.temperature),
+    turbidez: safeNumber(record.turbidity),
+    conductividad: safeNumber(record.conductivity),
+    oxigeno: safeNumber(record.dissolvedOxygen),
+    // Valores para el frontend - con defaults sensatos
+    calidad: safeNumber(record.calidad) ?? 0,
     categoria: record.calidadCategoria || 'sin riesgo',
     color: record.calidadColor || 'green',
     // Metadata
-    deviceId: record.deviceId,
-    userId: record.userId,
-    createdAt: record.createdAt
+    deviceId: record.deviceId || null,
+    userId: record.userId || null,
+    createdAt: record.createdAt ? new Date(record.createdAt).toISOString() : null,
   };
 };
 
@@ -117,6 +124,44 @@ export class WaterQualityController {
     };
   }
 
+  @Get('single')
+  @ApiOperation({ summary: 'Obtener un solo registro ordenado y sin duplicados' })
+  @ApiQuery({ name: 'userId', required: false })
+  @ApiQuery({ name: 'index', required: false, description: 'Posición del dato único (0,1,2...)' })
+  @ApiQuery({ name: 'order', required: false, enum: ['ASC', 'DESC'] })
+  @ApiHeader({ name: 'x-user-id', required: false })
+  async getSingleOrdered(
+    @Query('userId') userId?: string,
+    @Query('index') index?: string,
+    @Query('order') order?: string,
+    @Headers('x-user-id') headerUserId?: string,
+  ) {
+    const effectiveUserId = userId || headerUserId;
+    const parsedIndex = index ? Number(index) : 0;
+
+    if (!Number.isInteger(parsedIndex) || parsedIndex < 0) {
+      throw new BadRequestException('El parámetro index debe ser un entero mayor o igual a 0');
+    }
+
+    const normalizedOrder = (order || 'DESC').toUpperCase();
+    if (normalizedOrder !== 'ASC' && normalizedOrder !== 'DESC') {
+      throw new BadRequestException('El parámetro order debe ser ASC o DESC');
+    }
+
+    const record = await this.waterQualityService.getSingleOrderedUnique(
+      effectiveUserId,
+      parsedIndex,
+      normalizedOrder as 'ASC' | 'DESC',
+    );
+
+    return {
+      success: true,
+      index: parsedIndex,
+      order: normalizedOrder,
+      data: toWaterDataView(record),
+    };
+  }
+
   @Get('stats')
   @ApiOperation({ summary: 'Obtener estadísticas' })
   @ApiQuery({ name: 'userId', required: false })
@@ -160,7 +205,7 @@ export class WaterQualityController {
   })
   @UseInterceptors(FileInterceptor('file'))
   async uploadCsv(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: { buffer: Buffer } | undefined,
     @Body('deviceId') bodyDeviceId?: string,
     @Headers('x-user-id') headerUserId?: string,
   ): Promise<CsvUploadResponseDto> {

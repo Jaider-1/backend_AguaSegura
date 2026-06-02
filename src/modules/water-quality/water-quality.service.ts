@@ -421,6 +421,57 @@ export class WaterQualityService {
   }
 
   /**
+   * Obtiene un solo registro por posición, ordenado y sin duplicados.
+   * Duplicado = mismos valores de medición en la misma fecha/hora.
+   */
+  async getSingleOrderedUnique(
+    userId?: string,
+    index: number = 0,
+    order: 'ASC' | 'DESC' = 'DESC',
+  ): Promise<WaterQuality> {
+    const where: Record<string, any> = {};
+    if (userId) {
+      where.userId = userId;
+    }
+
+    const records = await this.waterQualityRepository.find({
+      where,
+      order: { measuredAt: order },
+    });
+
+    const seen = new Set<string>();
+    const uniqueRecords: WaterQuality[] = [];
+
+    for (const record of records) {
+      const key = [
+        record.measuredAt?.toISOString?.() ?? '',
+        record.ph ?? '',
+        record.temperature ?? '',
+        record.turbidity ?? '',
+        record.conductivity ?? '',
+        record.dissolvedOxygen ?? '',
+        record.deviceId ?? '',
+        record.userId ?? '',
+      ].join('|');
+
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniqueRecords.push(record);
+      }
+    }
+
+    if (uniqueRecords.length === 0) {
+      throw new NotFoundException('No hay registros disponibles');
+    }
+
+    if (index < 0 || index >= uniqueRecords.length) {
+      throw new NotFoundException('No hay más registros en la posición solicitada');
+    }
+
+    return uniqueRecords[index];
+  }
+
+  /**
    * Obtiene estadísticas de calidad
    */
   async getStats(userId?: string) {
