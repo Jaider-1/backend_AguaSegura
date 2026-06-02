@@ -13,7 +13,7 @@ async function ensureDatabaseExists() {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432'),
     user: process.env.DB_USERNAME || 'postgres',
-    password: process.env.DB_PASSWORD || 'jeyson1171',
+    password: process.env.DB_PASSWORD || 'Jeyson1171',
     database: 'aguasegura', // Conectar a postgres default primero
   };
 
