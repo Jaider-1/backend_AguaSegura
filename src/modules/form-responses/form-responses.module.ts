@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { FormResponsesController } from './from-responses.controller';
+import { FormResponsesController } from './form-responses.controller';
 import { FormResponsesService } from './form-responses.service';
 import { FormResponse } from './entities/form-response.entity';
 

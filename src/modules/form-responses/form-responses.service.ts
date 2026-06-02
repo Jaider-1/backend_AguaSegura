@@ -5,7 +5,7 @@ import { FormResponse } from './entities/form-response.entity';
 import { CreateFormResponseDto } from './dto/create-form-response.dto';
 import { UpdateFormResponseDto } from './dto/update-form-response.dto';
 
-interface UserStats {
+export interface UserStats {
   totalResponses: number;
   latestResponseDate?: Date;
   willingness?: string;

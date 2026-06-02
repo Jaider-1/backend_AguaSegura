@@ -9,31 +9,52 @@ import { WaterQualityModule } from './modules/water-quality/water-quality.module
 import { FormResponsesModule } from './modules/form-responses/form-responses.module';
 import configuration from './config/configuration';
 
+const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
-      envFilePath: '.env',
+      envFilePath,
     }),
     
     TypeOrmModule.forRootAsync({
       
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get('DB_HOST', 'localhost'),
-        port: configService.get('DB_PORT', 5432),
-        username: configService.get('DB_USERNAME', 'postgres'),
-        password: configService.get('DB_PASSWORD', 'Jeyson1171'),
-        database: configService.get('DB_DATABASE', 'aguasegura'),
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: configService.get('DB_SYNCHRONIZE', true),
-        autoLoadEntities: true,
-        logging: true,
-        retryDelay: 3000,
-        retryAttempts: 10,
-      }),
+      useFactory: (configService: ConfigService) => {
+        const databaseUrl = configService.get<string>('database.url', '');
+        const explicitDbHost = process.env.DB_HOST || process.env.DATABASE_HOST;
+        const isProduction = configService.get<string>('NODE_ENV') === 'production';
+
+        if (isProduction && !databaseUrl && !explicitDbHost) {
+          throw new Error(
+            'Database configuration is missing in production. Set DATABASE_URL or DB_HOST/DB_PORT/DB_USERNAME/DB_PASSWORD/DB_DATABASE.',
+          );
+        }
+
+        return {
+          type: 'postgres',
+          ...(databaseUrl
+            ? {
+                url: databaseUrl,
+                ssl: { rejectUnauthorized: false },
+              }
+            : {
+                host: configService.get<string>('database.host', '127.0.0.1'),
+                port: configService.get<number>('database.port', 5432),
+                username: configService.get<string>('database.username', 'postgres'),
+                password: configService.get<string>('database.password', ''),
+                database: configService.get<string>('database.database', 'aguasegura'),
+              }),
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          synchronize: configService.get<boolean>('database.synchronize', false),
+          autoLoadEntities: true,
+          logging: configService.get<string>('NODE_ENV') !== 'production',
+          retryDelay: 3000,
+          retryAttempts: 10,
+        };
+      },
       inject: [ConfigService],
     }),
     

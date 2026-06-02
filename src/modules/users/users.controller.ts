@@ -24,18 +24,6 @@ export class UsersController {
     };
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Obtener un usuario por ID' })
-  @ApiParam({ name: 'id', description: 'ID del usuario', type: String })
-  @ApiResponse({ status: 200, description: 'Usuario encontrado' })
-  @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return {
-      success: true,
-      data: await this.usersService.findOne(id)
-    };
-  }
-
   @Get('email/:email')
   @ApiOperation({ summary: 'Obtener usuario por email' })
   @ApiParam({ name: 'email', description: 'Email del usuario', type: String })
@@ -45,6 +33,18 @@ export class UsersController {
     return {
       success: true,
       data: await this.usersService.findByEmail(email)
+    };
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Obtener un usuario por ID' })
+  @ApiParam({ name: 'id', description: 'ID del usuario', type: String })
+  @ApiResponse({ status: 200, description: 'Usuario encontrado' })
+  @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return {
+      success: true,
+      data: await this.usersService.findOne(id)
     };
   }
 }

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, FindOptionsWhere, In, IsNull, SelectQueryBuilder } from 'typeorm';
+import { Repository, Between, FindOptionsWhere, In, IsNull, Not, SelectQueryBuilder } from 'typeorm';
 import { DataSource } from 'typeorm';
 import { Recommendation } from './entities/recommendation.entity';
 import { CreateRecommendationDto } from './dto/create-recommendation.dto';
@@ -358,36 +358,25 @@ export class RecommendationsService {
   // Método para obtener TODAS las reglas (activas e inactivas)
   async getAllRules() {
     await this.ensureRecommendationRulesTable();
-
-    return this.dataSource.query(`
-      SELECT * FROM recommendation 
-      ORDER BY 
-        CASE priority_level 
-          WHEN 'critical' THEN 1
-          WHEN 'high' THEN 2
-          WHEN 'medium' THEN 3
-          WHEN 'low' THEN 4
-        END,
-        created_at DESC
-    `);
+    return this.recommendationsRepository.find({
+      where: { name: Not(IsNull()) },
+      order: {
+        priorityLevel: 'ASC',
+        createdAt: 'DESC',
+      },
+    });
   }
 
   // Método existente para obtener solo reglas activas
   async getActiveRules() {
     await this.ensureRecommendationRulesTable();
-
-    return this.dataSource.query(`
-      SELECT * FROM recommendation 
-      WHERE true 
-      ORDER BY 
-        CASE priority_level 
-          WHEN 'critical' THEN 1
-          WHEN 'high' THEN 2
-          WHEN 'medium' THEN 3
-          WHEN 'low' THEN 4
-        END,
-        created_at DESC
-    `);
+    return this.recommendationsRepository.find({
+      where: { name: Not(IsNull()) },
+      order: {
+        priorityLevel: 'ASC',
+        createdAt: 'DESC',
+      },
+    });
   }
 
   async findRulesByCategory(category: string) {
@@ -615,12 +604,22 @@ export class RecommendationsService {
       `);
     }
 
-    // Asegurar columnas para recomendaciones generadas (y compatibilidad)
+    // Asegurar columnas para reglas + recomendaciones generadas (compatibilidad retroactiva)
     await this.dataSource.query(`
       ALTER TABLE recommendation
-        ALTER COLUMN name DROP NOT NULL;
-
-      ALTER TABLE recommendation
+        ADD COLUMN IF NOT EXISTS recommendation_text TEXT,
+        ADD COLUMN IF NOT EXISTS priority_level VARCHAR(20),
+        ADD COLUMN IF NOT EXISTS traffic_light_color VARCHAR(10),
+        ADD COLUMN IF NOT EXISTS category VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS description TEXT,
+        ADD COLUMN IF NOT EXISTS min_quantity_percentage DECIMAL(5,2),
+        ADD COLUMN IF NOT EXISTS max_quantity_percentage DECIMAL(5,2),
+        ADD COLUMN IF NOT EXISTS min_quality_irc DECIMAL(5,2),
+        ADD COLUMN IF NOT EXISTS max_quality_irc DECIMAL(5,2),
+        ADD COLUMN IF NOT EXISTS climate_conditions TEXT[],
+        ADD COLUMN IF NOT EXISTS reuse_dispositions TEXT[],
         ADD COLUMN IF NOT EXISTS parameters JSONB,
         ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE,
         ADD COLUMN IF NOT EXISTS is_applied BOOLEAN DEFAULT FALSE,
@@ -631,6 +630,59 @@ export class RecommendationsService {
         ADD COLUMN IF NOT EXISTS water_quantity_id UUID,
         ADD COLUMN IF NOT EXISTS habitantes INTEGER,
         ADD COLUMN IF NOT EXISTS tipo_vivienda VARCHAR(100);
+    `);
+
+    await this.dataSource.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'recommendation' AND column_name = 'name'
+        ) THEN
+          EXECUTE 'ALTER TABLE recommendation ALTER COLUMN name DROP NOT NULL';
+        END IF;
+      END
+      $$;
+    `);
+
+    // Migrar columnas legacy camelCase -> snake_case cuando existan
+    await this.dataSource.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'recommendation' AND column_name = 'priorityLevel'
+        ) THEN
+          EXECUTE 'UPDATE recommendation SET priority_level = COALESCE(priority_level, "priorityLevel"::text)';
+        END IF;
+
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'recommendation' AND column_name = 'trafficLightColor'
+        ) THEN
+          EXECUTE 'UPDATE recommendation SET traffic_light_color = COALESCE(traffic_light_color, "trafficLightColor"::text)';
+        END IF;
+
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'recommendation' AND column_name = 'createdAt'
+        ) THEN
+          EXECUTE 'UPDATE recommendation SET created_at = COALESCE(created_at, "createdAt")';
+        END IF;
+      END
+      $$;
+    `);
+
+    // Normalizar valores para evitar errores por datos legacy
+    await this.dataSource.query(`
+      UPDATE recommendation
+      SET
+        recommendation_text = COALESCE(recommendation_text, ''),
+        priority_level = COALESCE(priority_level, 'low'),
+        traffic_light_color = COALESCE(traffic_light_color, 'green'),
+        category = COALESCE(NULLIF(category, ''), 'general'),
+        created_at = COALESCE(created_at, NOW()),
+        updated_at = COALESCE(updated_at, NOW());
     `);
   }
   async getAllRecommendationsAndRules(filters: FilterRecommendationsDto) {

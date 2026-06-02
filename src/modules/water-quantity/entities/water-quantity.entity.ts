@@ -29,11 +29,15 @@ export class WaterQuantity {
   createdAt: Date; // ESTA ES LA PROPERTY QUE DEBES USAR
 
   // Relación opcional con usuario
-  @ManyToOne(() => User, { nullable: true })
+  @ManyToOne(() => User, user => user.waterQuantities, {
+    nullable: true,
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @Column({ nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   userId: string;
 
   @Column({ 

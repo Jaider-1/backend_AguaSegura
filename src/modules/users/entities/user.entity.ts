@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { WaterQuantity } from '../../water-quantity/entities/water-quantity.entity';
 import { WaterQuality } from '../../water-quality/entities/water-quality.entity';
 import { Recommendation } from '../../recommendations/entities/recommendation.entity';
+import { FormResponse } from '../../form-responses/entities/form-response.entity';
 
 @Entity('users')
 export class User {
@@ -47,6 +48,9 @@ export class User {
    @OneToMany(() => WaterQuality, waterQuality => waterQuality.user)
   waterQualities: WaterQuality[];
 
-   @OneToMany(() => WaterQuantity, waterQuantity => waterQuantity.user)
+  @OneToMany(() => WaterQuantity, waterQuantity => waterQuantity.user)
   waterQuantities: WaterQuantity[];
+
+  @OneToMany(() => FormResponse, formResponse => formResponse.user)
+  formResponses: FormResponse[];
 }
